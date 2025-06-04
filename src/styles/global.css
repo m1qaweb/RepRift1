@@ -1,0 +1,36 @@
+/* /src/styles/global.css - Tailwind directives and global styles. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Example global styles */
+body {
+  font-family: "Inter", sans-serif; /* Make sure to import Inter or your chosen font */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar (optional) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #2d3748; /* dark:bg-gray-700 */
+}
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #555;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
