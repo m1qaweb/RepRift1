@@ -22,7 +22,9 @@ export const formatDate = (
   const dateObj = typeof date === "string" ? parseISO(date) : new Date(date);
   return format(dateObj, formatString);
 };
-
+export const getISOStringFromDate = (date: Date): string => {
+  return date.toISOString().split("T")[0];
+};
 /**
  * Parses an ISO timestamp string into a Date object.
  * @param isoTimestamp The ISO timestamp string.

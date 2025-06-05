@@ -7,6 +7,12 @@ export interface User {
   email: string;
   avatarUrl?: string;
   bio?: string;
+  heightCm?: number;
+  goals?: {
+    // <<< ADD THIS BLOCK
+    weightKg?: number;
+  };
+  initialSetupCompleted?: boolean;
 }
 
 export interface Exercise {
@@ -33,6 +39,7 @@ export interface WorkoutLog {
   durationMinutes?: number; // total duration
   caloriesBurned?: number;
   notes?: string;
+
   completedExercises: Array<{
     exerciseId: string;
     exerciseName: string; // denormalized
@@ -176,12 +183,29 @@ export const fakeSignup = async (
   pass: string
 ): Promise<User> => {
   await simulateDelay();
+  console.log("Fake API: Attempting signup for", email);
   if (mockUsers.some((u) => u.email === email)) {
-    throw new Error("Email already exists");
+    console.log("Fake API: Signup failed - email exists", email);
+    throw new Error("Email address is already in use.");
   }
-  const newUser: User = { id: `user${mockUsers.length + 1}`, name, email }; // password should be hashed
+  if (!pass || pass.length < 8) {
+    console.log("Fake API: Signup failed - password too short", email);
+    throw new Error("Password must be at least 8 characters long.");
+  }
+  const newUser: User = {
+    id: `user${mockUsers.length + 1}${Date.now()}`,
+    name,
+    email,
+    avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      name.charAt(0).toUpperCase()
+    )}&background=random&color=fff&size=128`,
+    bio: "",
+    heightCm: undefined, // Initialize height as undefined
+    initialSetupCompleted: false, // <<< SET TO FALSE FOR NEW USERS
+  };
   mockUsers.push(newUser);
-  return newUser;
+  console.log("Fake API: Signup successful for", email, newUser);
+  return JSON.parse(JSON.stringify(newUser));
 };
 
 export const fakeLogout = async (): Promise<void> => {
@@ -230,7 +254,18 @@ export const saveProgram = async (
     return newProgram;
   }
 };
-
+export const deleteProgram = async (programId: string): Promise<void> => {
+  await simulateDelay();
+  console.log("Fake API: Attempting to delete program:", programId);
+  const initialLength = mockPrograms.length;
+  mockPrograms = mockPrograms.filter((p) => p.id !== programId);
+  if (mockPrograms.length < initialLength) {
+    console.log("Fake API: Program deleted successfully", programId);
+    return;
+  }
+  console.error("Fake API: Program not found for deletion", programId);
+  throw new Error("Program not found.");
+};
 export const mockMasterExercises: MasterExercise[] = [
   {
     id: "master_ex_001",
@@ -1696,30 +1731,50 @@ export const saveWorkoutLog = async (
 };
 
 // --- Body Metrics ---
-export const fetchBodyMetrics = async (): Promise<BodyMetric[]> => {
+export const fetchBodyMetrics = async (
+  userId?: string
+): Promise<BodyMetric[]> => {
+  // <<< MODIFIED: Added userId? parameter
   await simulateDelay();
-  return [...mockBodyMetrics].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  console.log(`Fake API: Fetching body metrics.`);
+  if (userId) {
+    console.log(
+      `(Filtering for userId: ${userId} - Note: current mock doesn't use this filter)`
+    );
+    // In a real API or a more complex mock, you would filter metrics by userId here.
+    // For this basic mock, we'll still return all metrics, but the signature is correct.
+  }
+  // Return a deep copy to prevent direct mutation of the mock data store
+  return JSON.parse(JSON.stringify(mockBodyMetrics)).sort(
+    (a: BodyMetric, b: BodyMetric) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 };
 
 export const saveBodyMetric = async (
-  metricData: Omit<BodyMetric, "date"> & { date: string }
+  metricData: BodyMetric & { userId?: string }
 ): Promise<BodyMetric> => {
   await simulateDelay();
-  const index = mockBodyMetrics.findIndex((m) => m.date === metricData.date);
-  if (index > -1) {
-    mockBodyMetrics[index] = { ...mockBodyMetrics[index], ...metricData };
-    return mockBodyMetrics[index];
+
+  const { userId, ...dataToSave } = metricData; // Strip userId if not part of BodyMetric type
+  const existingMetricIdx = mockBodyMetrics.findIndex(
+    (m) => m.date === dataToSave.date
+  );
+
+  if (existingMetricIdx > -1) {
+    mockBodyMetrics[existingMetricIdx] = {
+      ...mockBodyMetrics[existingMetricIdx],
+      ...dataToSave,
+    };
+    console.log("Fake API: Body metric updated for date:", dataToSave.date);
+    return JSON.parse(JSON.stringify(mockBodyMetrics[existingMetricIdx]));
   } else {
-    const newMetric: BodyMetric = { ...metricData };
-    mockBodyMetrics.push(newMetric);
-    // Re-sort by date
+    const newMetricEntry: BodyMetric = { ...dataToSave };
+    mockBodyMetrics.push(newMetricEntry);
     mockBodyMetrics.sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-    return newMetric;
+    console.log("Fake API: Body metric saved for date:", newMetricEntry.date);
+    return JSON.parse(JSON.stringify(newMetricEntry));
   }
 };
-
-// Add other mock API functions for exercises, history, analytics data, user profile, etc.

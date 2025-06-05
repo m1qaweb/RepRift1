@@ -26,6 +26,7 @@ const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const FFMICalculatorPage = lazy(() => import("./pages/FFMICalculatorPage"));
+const InitialSetupPage = lazy(() => import("./pages/InitialSetupPage"));
 
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center h-screen">
@@ -43,6 +44,15 @@ const AppContent: React.FC = () => {
     }
     if (!user) {
       return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+    if (
+      user &&
+      !user.initialSetupCompleted &&
+      location.pathname !== "/initial-setup"
+    ) {
+      return (
+        <Navigate to="/initial-setup" state={{ from: location }} replace />
+      );
     }
     return children;
   };
@@ -182,6 +192,16 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/initial-setup"
+            element={
+              <ProtectedRoute>
+                <PageLayout>
+                  <InitialSetupPage />
+                </PageLayout>
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>
@@ -191,7 +211,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-brand-background text-brand-text transition-colors duration-300">
       <Navbar />
-      <main className="flex-grow container mx-auto px-4">
+      <main className="flex-grow container mx-auto px-4 py-6">
         <Suspense fallback={<PageLoader />}>
           <AppRoutesInner />
         </Suspense>

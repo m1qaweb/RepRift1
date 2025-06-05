@@ -9,7 +9,7 @@ import {
   validatePassword,
   validateRequired,
 } from "../../utils/validators";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
 import InputField from "./InputField";
 import {
   UserIcon,
@@ -29,29 +29,37 @@ const SignupForm: React.FC = () => {
     register,
     handleSubmit,
     watch,
-    formState: { errors, isSubmitting },
-  } = useForm<Inputs>({ mode: "onTouched" });
-  const { signup } = useAuth();
+    formState: { errors, isSubmitting: rhfIsSubmitting }, // Renamed to avoid conflict if any
+  } = useForm<Inputs>({ mode: "onTouched" }); // "onTouched" is good for eager validation
+
+  const { signup, loading: authContextLoading } = useAuth(); // Destructure context loading
+  const navigate = useNavigate(); // Hook for navigation
   const [apiError, setApiError] = useState<string | null>(null);
 
   const passwordValue = watch("pass", "");
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
-    setApiError(null);
+    setApiError(null); // Clear previous errors
     if (data.pass !== data.confirmPassword) {
       setApiError("Passwords do not match.");
+      // Optionally set focus to confirmPassword field here
       return;
     }
     try {
       await signup({ name: data.name, email: data.email, pass: data.pass });
+      // If the above line does not throw, signup was successful
+      // Optional: Show success toast: toast.success("Signup successful! Please log in.");
+      navigate("/login"); // <<<< --- NAVIGATION ON SUCCESS ---
     } catch (error) {
       setApiError(
         error instanceof Error
           ? error.message
-          : "Signup failed. Please try again."
+          : "Signup failed due to an unexpected error. Please try again."
       );
     }
   };
+
+  const isLoading = rhfIsSubmitting || authContextLoading; // Combined loading state for button
 
   return (
     <motion.div
@@ -72,7 +80,7 @@ const SignupForm: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-3 bg-error/10 border border-error/30 text-error rounded-md"
+          className="mb-4 p-3 bg-error/10 border border-error/30 text-error text-sm rounded-md" // Text size sm for errors
           role="alert"
         >
           {apiError}
@@ -132,7 +140,7 @@ const SignupForm: React.FC = () => {
             type="submit"
             variant="primary"
             className="w-full"
-            isLoading={isSubmitting}
+            isLoading={isLoading} // Use combined loading state
             size="lg"
           >
             Sign Up

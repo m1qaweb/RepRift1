@@ -77,7 +77,7 @@ const getPageTitle = (pathname: string): string => {
     case "/ffmi-calculator":
       return "FFMI Calculator";
     case "/profile":
-      return "My Account"; // Updated for consistency
+      return "My Account";
     case "/login":
       return "Login";
     case "/signup":
@@ -123,7 +123,7 @@ const Navbar: React.FC = () => {
         { path: "/programs", label: "Programs" },
         { path: "/history", label: "History" },
         { path: "/analytics", label: "Analytics" },
-        // { path: "/ffmi-calculator", label: "FFMI Calc" }, // Optionally keep or move to profile/tools
+        { path: "/ffmi-calculator", label: "FFMI Calc" },
       ]
     : [];
 

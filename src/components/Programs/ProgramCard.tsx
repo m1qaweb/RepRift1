@@ -8,19 +8,22 @@ import {
   PencilSquareIcon,
   EyeIcon,
   BoltIcon,
+  TrashIcon, // Import TrashIcon
 } from "@heroicons/react/24/outline";
 import { Link } from "react-router-dom";
 
 interface ProgramCardProps {
   program: Program;
   onEditClick?: (programId: string) => void;
+  onDeleteClick?: (programId: string, programTitle: string) => void; // MODIFIED: Add onDeleteClick, pass title for confirmation
 }
 
-const ProgramCard: React.FC<ProgramCardProps> = ({ program, onEditClick }) => {
-  const cardHoverEffect = {
-    y: -5,
-  };
-
+const ProgramCard: React.FC<ProgramCardProps> = ({
+  program,
+  onEditClick,
+  onDeleteClick,
+}) => {
+  const cardHoverEffect = { y: -5 };
   const totalExercises = program.exercises.length;
 
   return (
@@ -37,16 +40,32 @@ const ProgramCard: React.FC<ProgramCardProps> = ({ program, onEditClick }) => {
               {program.title}
             </h3>
           </Link>
-          {onEditClick && (
-            <motion.button
-              onClick={() => onEditClick(program.id)}
-              className="p-1.5 text-brand-text-muted hover:text-brand-primary flex-shrink-0"
-              whileHover={{ rotate: 10, scale: 1.15 }}
-              title="Edit Program"
-            >
-              <PencilSquareIcon className="h-5 w-5" />
-            </motion.button>
-          )}
+          {/* Action Icons Container */}
+          <div className="flex items-center flex-shrink-0 space-x-1">
+            {onEditClick && (
+              <motion.button
+                onClick={() => onEditClick(program.id)}
+                className="p-1.5 text-brand-text-muted hover:text-brand-primary"
+                whileHover={{ rotate: 10, scale: 1.15 }}
+                title="Edit Program"
+              >
+                <PencilSquareIcon className="h-5 w-5" />
+              </motion.button>
+            )}
+            {onDeleteClick && ( // MODIFIED: Add Delete Button
+              <motion.button
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent triggering link if card itself is a link area
+                  onDeleteClick(program.id, program.title);
+                }}
+                className="p-1.5 text-brand-text-muted hover:text-error" // Error color for delete
+                whileHover={{ scale: 1.15 }}
+                title="Delete Program"
+              >
+                <TrashIcon className="h-5 w-5" />
+              </motion.button>
+            )}
+          </div>
         </div>
         <p className="text-xs sm:text-sm text-brand-text-muted mb-4 h-12 sm:h-16 overflow-hidden line-clamp-3 sm:line-clamp-4">
           {program.description || "No description provided."}
@@ -78,7 +97,6 @@ const ProgramCard: React.FC<ProgramCardProps> = ({ program, onEditClick }) => {
           </p>
         )}
       </div>
-
       <div className="mt-auto pt-3 border-t border-brand-border/70 p-4">
         <Link to={`/programs/${program.id}`} className="block">
           <Button
@@ -96,5 +114,4 @@ const ProgramCard: React.FC<ProgramCardProps> = ({ program, onEditClick }) => {
     </Card>
   );
 };
-
 export default ProgramCard;

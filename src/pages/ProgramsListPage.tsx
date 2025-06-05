@@ -1,19 +1,35 @@
 // /src/pages/ProgramsListPage.tsx
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Program, fetchPrograms } from "../utils/fakeApi";
+import {
+  Program,
+  fetchPrograms,
+  deleteProgram as apiDeleteProgram,
+} from "../utils/fakeApi"; // Import deleteProgram
 import ProgramCard from "../components/Programs/ProgramCard";
 import Button from "../components/UI/Button";
 import ProgramEditorForm from "../components/Programs/ProgramEditorForm";
 import Modal from "../components/UI/Modal";
-import { PlusCircleIcon } from "@heroicons/react/24/solid";
+import {
+  PlusCircleIcon,
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/solid"; // Add ExclamationTriangleIcon
 import Spinner from "../components/UI/Spinner";
 
 const ProgramsListPage: React.FC = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false); // Renamed for clarity
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
+
+  // --- State for Delete Confirmation ---
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [programToDelete, setProgramToDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false); // Loading state for delete operation
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     loadPrograms();
@@ -29,19 +45,19 @@ const ProgramsListPage: React.FC = () => {
 
   const handleOpenModalForNew = () => {
     setEditingProgram(null);
-    setIsModalOpen(true);
+    setIsEditorModalOpen(true);
   };
 
   const handleOpenModalForEdit = (programId: string) => {
     const programToEdit = programs.find((p) => p.id === programId);
     if (programToEdit) {
       setEditingProgram(programToEdit);
-      setIsModalOpen(true);
+      setIsEditorModalOpen(true);
     }
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
+  const handleCloseEditorModal = () => {
+    setIsEditorModalOpen(false);
     setEditingProgram(null);
   };
 
@@ -51,23 +67,51 @@ const ProgramsListPage: React.FC = () => {
         prev.map((p) => (p.id === savedProgram.id ? savedProgram : p))
       );
     } else {
-      setPrograms((prev) => [savedProgram, ...prev]); // Add new to the start
+      setPrograms((prev) => [savedProgram, ...prev]);
     }
-    handleCloseModal();
+    handleCloseEditorModal();
+    // loadPrograms(); // Or optimistically update as above
   };
 
-  // Variants for the grid of program cards
+  // --- Delete Program Handlers ---
+  const handleOpenDeleteModal = (programId: string, programTitle: string) => {
+    setProgramToDelete({ id: programId, title: programTitle });
+    setDeleteError(null); // Clear previous errors
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setProgramToDelete(null);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDeleteProgram = async () => {
+    if (!programToDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await apiDeleteProgram(programToDelete.id);
+      setPrograms((prev) => prev.filter((p) => p.id !== programToDelete.id)); // Optimistic update
+      handleCloseDeleteModal();
+      // Optionally, show success toast here: toast.success(`"${programToDelete.title}" deleted successfully.`);
+    } catch (error) {
+      console.error("Failed to delete program:", error);
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : "Could not delete program. Please try again."
+      );
+      // Optionally, show error toast here
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const programsGridVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.08, // Adjusted stagger timing
-      },
-    },
+    visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
   };
-
-  // Variants for page content wrapper if needed for entrance animation
   const contentWrapperVariants = {
     initial: { opacity: 0, y: 20 },
     animate: {
@@ -77,34 +121,29 @@ const ProgramsListPage: React.FC = () => {
     },
   };
 
-  if (isLoading) {
+  if (isLoading && programs.length === 0) {
+    // Show full page loader only if initial load and no programs yet
     return (
-      // This loading state takes up significant vertical space matching typical page content height
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] py-10 text-brand-text">
-        <Spinner size="lg" className="mb-3" />
-        <p>Loading your programs...</p>
+        <Spinner size="lg" className="mb-3" /> <p>Loading your programs...</p>
       </div>
     );
   }
 
   return (
-    // This outermost div is just for overall page structure / page-level animations.
-    // Padding like `py-6 sm:py-8` ensures space from Navbar/Footer if App.tsx doesn't provide it.
     <motion.div
       className="py-6 sm:py-8"
       initial="initial"
       animate="animate"
-      variants={contentWrapperVariants} // Animate the whole page content in
+      variants={contentWrapperVariants}
     >
-      {/* --- Main Content Wrapper - THIS GETS THE "BRIGHTER" BACKGROUND --- */}
       <div className="bg-brand-card rounded-xl shadow-xl p-4 sm:p-6 lg:p-8">
-        {/* Header section: Title and Create Button */}
         <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-brand-text mb-4 sm:mb-0">
             Your Workout Programs
           </h1>
           <Button
-            variant="primary" // Ensure this button style is distinct and visible
+            variant="primary"
             onClick={handleOpenModalForNew}
             leftIcon={<PlusCircleIcon className="h-5 w-5" />}
             size="md"
@@ -113,63 +152,116 @@ const ProgramsListPage: React.FC = () => {
           </Button>
         </header>
 
-        {/* Program Cards Grid or Empty State */}
         <AnimatePresence mode="wait">
           {programs.length > 0 ? (
             <motion.div
-              key="programs-grid" // Key for AnimatePresence
+              key="programs-grid"
               variants={programsGridVariants}
               initial="hidden"
               animate="visible"
-              exit={{ opacity: 0 }} // Basic exit for the grid
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-5 sm:gap-6" // Consistent gap
+              exit={{ opacity: 0 }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-5 sm:gap-6"
             >
               {programs.map((program) => (
-                <ProgramCard // ProgramCard has its own theming and internal <Card>
+                <ProgramCard
                   key={program.id}
                   program={program}
                   onEditClick={handleOpenModalForEdit}
+                  onDeleteClick={handleOpenDeleteModal}
                 />
               ))}
             </motion.div>
           ) : (
-            <motion.div
-              key="no-programs" // Key for AnimatePresence
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }} // Delay if grid was exiting
-              exit={{ opacity: 0, y: -10 }}
-              className="text-center py-12 sm:py-16" // More padding for empty state
-            >
-              <PlusCircleIcon className="h-16 w-16 sm:h-20 sm:w-20 mx-auto text-brand-primary/30 mb-5" />
-              <h2 className="text-xl font-semibold text-brand-text mb-2">
-                No Workout Programs Found
-              </h2>
-              <p className="text-sm text-brand-text-muted max-w-sm mx-auto mb-6">
-                It looks like you haven't created any programs yet. Get started
-                by clicking the button above!
-              </p>
-              {/* Optionally, a button here too, but the one in header is primary */}
-            </motion.div>
+            !isLoading && (
+              <motion.div
+                key="no-programs"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
+                exit={{ opacity: 0, y: -10 }}
+                className="text-center py-12 sm:py-16"
+              >
+                <PlusCircleIcon className="h-16 w-16 sm:h-20 sm:w-20 mx-auto text-brand-primary/30 mb-5" />
+                <h2 className="text-xl font-semibold text-brand-text mb-2">
+                  No Workout Programs Found
+                </h2>
+                <p className="text-sm text-brand-text-muted max-w-sm mx-auto mb-6">
+                  Start by creating a new program tailored to your fitness
+                  goals.
+                </p>
+              </motion.div>
+            )
           )}
         </AnimatePresence>
-      </div>{" "}
-      {/* End of Main Content Wrapper with bg-brand-card */}
-      {/* Modal for ProgramEditorForm (ensure Modal styling allows it to pop) */}
-      {isModalOpen && (
+      </div>
+
+      {isEditorModalOpen && (
         <Modal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
+          isOpen={isEditorModalOpen}
+          onClose={handleCloseEditorModal}
           title={editingProgram ? "Edit Program" : "Create New Workout Program"}
-          size="4xl" // Keep large size for the form
-          hideDefaultFooter // Form provides its own footer/actions
-          panelClassName="dark:bg-[rgb(var(--color-card-rgb)/0.95)] backdrop-blur-lg" // Slightly more opaque modal
-          preventCloseOnBackdropClick={true} // To prevent accidental close for complex form
+          size="4xl"
+          hideDefaultFooter
+          panelClassName="dark:bg-[rgb(var(--color-card-rgb)/0.95)] backdrop-blur-lg"
+          preventCloseOnBackdropClick={true}
         >
           <ProgramEditorForm
             program={editingProgram}
             onSave={handleSaveProgram}
-            onCancel={handleCloseModal}
+            onCancel={handleCloseEditorModal}
           />
+        </Modal>
+      )}
+
+      {/* --- Delete Confirmation Modal --- */}
+      {isDeleteModalOpen && programToDelete && (
+        <Modal
+          isOpen={isDeleteModalOpen}
+          onClose={handleCloseDeleteModal}
+          title="Confirm Deletion"
+          size="md"
+          panelClassName="dark:bg-[rgb(var(--color-card-rgb)/0.95)] backdrop-blur-lg"
+          preventCloseOnBackdropClick={true}
+          hideDefaultFooter={true}
+          customFooter={
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="ghost"
+                onClick={handleCloseDeleteModal}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleConfirmDeleteProgram}
+                isLoading={isDeleting}
+                disabled={isDeleting}
+              >
+                Delete Program
+              </Button>
+            </div>
+          }
+        >
+          <div className="flex items-start">
+            <ExclamationTriangleIcon className="h-10 w-10 text-error mr-4 flex-shrink-0" />
+            <div>
+              <p className="text-brand-text">
+                Are you sure you want to delete the program:{" "}
+                <strong className="text-brand-text font-semibold">
+                  "{programToDelete.title}"
+                </strong>
+                ?
+              </p>
+              <p className="text-sm text-brand-text-muted mt-2">
+                This action cannot be undone.
+              </p>
+              {deleteError && (
+                <p className="text-xs text-error mt-3 bg-error/10 p-2 rounded-md">
+                  {deleteError}
+                </p>
+              )}
+            </div>
+          </div>
         </Modal>
       )}
     </motion.div>

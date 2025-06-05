@@ -65,7 +65,7 @@ const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.15 } }}
             transition={{ duration: 0.2, ease: "circOut" }}
-            className={`fixed inset-0 bg-black/40 backdrop-blur-sm ${
+            className={`fixed inset-0 bg-black/3 backdrop-blur-sm ${
               backdropClassName || ""
             }`}
           />
@@ -111,11 +111,7 @@ const Modal: React.FC<ModalProps> = ({
               </div>
             )}
 
-            <div
-              className={`flex-grow overflow-y-auto p-4 sm:p-6 custom-scrollbar-thin ${
-                bodyClassName || ""
-              }`}
-            >
+            <div className={`flex-grow p-4 sm:p-6 ${bodyClassName || ""}`}>
               {children}
             </div>
 

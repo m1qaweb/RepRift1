@@ -1,12 +1,13 @@
-// /src/components/Programs/ExerciseSelectionModal.tsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import Modal from "../UI/Modal";
 import Button from "../UI/Button";
 import Spinner from "../UI/Spinner";
 import { MasterExercise, fetchMasterExercises } from "../../utils/fakeApi";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { CheckCircleIcon } from "@heroicons/react/24/solid";
+import {
+  MagnifyingGlassIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
 
 interface ExerciseSelectionModalProps {
   isOpen: boolean;
@@ -16,30 +17,41 @@ interface ExerciseSelectionModalProps {
 }
 
 const ExerciseSelectionModal: React.FC<ExerciseSelectionModalProps> = ({
-  isOpen,
+  isOpen = false,
   onClose,
   onExercisesSelected,
   alreadySelectedIds = [],
 }) => {
   const [masterExercises, setMasterExercises] = useState<MasterExercise[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<MasterExercise[]>(
     []
   );
 
+  const fetchExercises = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const exercises = await fetchMasterExercises(searchTerm);
+      setMasterExercises(exercises);
+    } catch (err) {
+      console.error("Failed to fetch exercises:", err);
+      setError("Failed to fetch exercises. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchTerm]);
+
   useEffect(() => {
     if (isOpen) {
-      setIsLoading(true);
-      fetchMasterExercises(searchTerm)
-        .then(setMasterExercises)
-        .catch(console.error)
-        .finally(() => setIsLoading(false));
+      fetchExercises();
     } else {
       setSearchTerm("");
       setSelectedExercises([]);
     }
-  }, [isOpen, searchTerm]);
+  }, [isOpen, fetchExercises]);
 
   const handleSelectExercise = (exercise: MasterExercise) => {
     setSelectedExercises((prev) =>
@@ -55,8 +67,90 @@ const ExerciseSelectionModal: React.FC<ExerciseSelectionModalProps> = ({
   };
 
   const filteredMasterExercises = useMemo(() => {
-    return masterExercises;
-  }, [masterExercises]);
+    return masterExercises.filter((exercise) =>
+      exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [masterExercises, searchTerm]);
+
+  const renderExerciseList = () => {
+    if (isLoading) {
+      return (
+        <div className="flex-grow flex justify-center items-center">
+          <Spinner size="lg" />
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex-grow flex justify-center items-center">
+          <p className="text-red-500 text-center">{error}</p>
+        </div>
+      );
+    }
+
+    if (filteredMasterExercises.length === 0) {
+      return (
+        <p className="text-center text-brand-text-muted py-10">
+          No exercises found. Try a different search.
+        </p>
+      );
+    }
+
+    return (
+      <div className="flex-grow overflow-y-auto space-y-2 pr-1.5 -mr-1.5">
+        {filteredMasterExercises.map((exercise) => {
+          const isCurrentlySelected = selectedExercises.some(
+            (ex) => ex.id === exercise.id
+          );
+          const isAlreadyInProgram = alreadySelectedIds.includes(exercise.id);
+
+          return (
+            <motion.div
+              key={exercise.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              layout
+              className={`p-3 border rounded-lg cursor-pointer transition-all duration-150 flex justify-between items-center ${
+                isAlreadyInProgram
+                  ? "bg-brand-border/20 opacity-50 cursor-not-allowed"
+                  : "border-brand-border/70 hover:border-brand-primary hover:bg-brand-primary/5"
+              } ${
+                isCurrentlySelected
+                  ? "!border-brand-primary ring-1 ring-brand-primary bg-brand-primary/10"
+                  : ""
+              }`}
+              onClick={() =>
+                !isAlreadyInProgram && handleSelectExercise(exercise)
+              }
+              aria-disabled={isAlreadyInProgram}
+              aria-selected={isCurrentlySelected}
+            >
+              <div>
+                <h4 className="font-semibold text-brand-text">
+                  {exercise.name}
+                </h4>
+                <p className="text-xs text-brand-text-muted">
+                  {exercise.category} • {exercise.bodyPart}
+                  {exercise.equipment && ` • ${exercise.equipment.join(", ")}`}
+                </p>
+              </div>
+              {isAlreadyInProgram ? (
+                <span className="text-xs text-brand-text-muted italic ml-2">
+                  In Program
+                </span>
+              ) : isCurrentlySelected ? (
+                <CheckCircleIcon className="h-5 w-5 text-brand-primary ml-2" />
+              ) : (
+                <div className="h-5 w-5 border-2 border-brand-border rounded-full group-hover:border-brand-primary ml-2 flex-shrink-0"></div>
+              )}
+            </motion.div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <Modal
@@ -64,8 +158,8 @@ const ExerciseSelectionModal: React.FC<ExerciseSelectionModalProps> = ({
       onClose={onClose}
       title="Select Exercises from Library"
       size="3xl"
-      preventCloseOnBackdropClick={true}
-      hideDefaultFooter={true}
+      preventCloseOnBackdropClick
+      hideDefaultFooter
       customFooter={
         <>
           <Button variant="ghost" onClick={onClose} size="md">
@@ -96,76 +190,14 @@ const ExerciseSelectionModal: React.FC<ExerciseSelectionModalProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search exercises (e.g., Bench Press, Legs, Barbell)"
             className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-card text-brand-text focus:ring-1 focus:ring-brand-primary focus:border-brand-primary pl-10"
+            aria-label="Search exercises"
           />
           <MagnifyingGlassIcon className="h-5 w-5 text-brand-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
         </div>
-        {isLoading ? (
-          <div className="flex-grow flex justify-center items-center">
-            <Spinner size="lg" />
-          </div>
-        ) : (
-          <div className="flex-grow overflow-y-auto space-y-2 pr-1.5 custom-scrollbar-thin -mr-1.5">
-            {filteredMasterExercises.length > 0 ? (
-              filteredMasterExercises.map((exercise) => {
-                const isCurrentlySelected = !!selectedExercises.find(
-                  (ex) => ex.id === exercise.id
-                );
-                const isAlreadyInProgram = alreadySelectedIds.includes(
-                  exercise.id
-                );
-                return (
-                  <motion.div
-                    key={exercise.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    layout
-                    onClick={() =>
-                      !isAlreadyInProgram && handleSelectExercise(exercise)
-                    }
-                    className={`p-3 border rounded-lg cursor-pointer transition-all duration-150 flex justify-between items-center
-                                ${
-                                  isAlreadyInProgram
-                                    ? "bg-brand-border/20 opacity-50 cursor-not-allowed"
-                                    : "border-brand-border/70 hover:border-brand-primary hover:bg-brand-primary/5"
-                                }
-                                ${
-                                  isCurrentlySelected
-                                    ? "!border-brand-primary ring-1 ring-brand-primary bg-brand-primary/10"
-                                    : ""
-                                }`}
-                  >
-                    <div>
-                      <h4 className="font-semibold text-brand-text">
-                        {exercise.name}
-                      </h4>
-                      <p className="text-xs text-brand-text-muted">
-                        {exercise.category} • {exercise.bodyPart}
-                        {exercise.equipment &&
-                          ` • ${exercise.equipment.join(", ")}`}
-                      </p>
-                    </div>
-                    {isAlreadyInProgram ? (
-                      <span className="text-xs text-brand-text-muted italic ml-2">
-                        In Program
-                      </span>
-                    ) : isCurrentlySelected ? (
-                      <CheckCircleIcon className="h-5 w-5 text-brand-primary ml-2" />
-                    ) : (
-                      <div className="h-5 w-5 border-2 border-brand-border rounded-full group-hover:border-brand-primary ml-2 flex-shrink-0"></div>
-                    )}
-                  </motion.div>
-                );
-              })
-            ) : (
-              <p className="text-center text-brand-text-muted py-10">
-                No exercises found. Try a different search.
-              </p>
-            )}
-          </div>
-        )}
+        {renderExerciseList()}
       </div>
     </Modal>
   );
 };
+
 export default ExerciseSelectionModal;

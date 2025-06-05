@@ -96,36 +96,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // <<< NEW updateUser function IMPLEMENTATION >>>
   const updateUser = async (updatedProfileData: Partial<User>) => {
     if (!user) {
       console.error("Cannot update user: no user is currently logged in.");
       throw new Error("User not authenticated for update.");
     }
-    // setLoading(true); // Optional: if you want loading state for this specific action
     try {
-      // In a real app, this would be an API call:
-      // const response = await api.updateUserProfile(user.id, updatedProfileData);
-      // const trulyUpdatedUserFromServer = response.data;
-
-      // For simulation, we merge the changes and update state + localStorage:
       const newUserData = { ...user, ...updatedProfileData };
-
       setUser(newUserData); // Update AuthContext's internal state
       localStorage.setItem("authUser", JSON.stringify(newUserData)); // Update localStorage
       console.log(
         "AuthContext: User updated and saved to localStorage",
         newUserData
       );
-
-      // You might want to return the newUserData or void
-      // return newUserData;
     } catch (error) {
       console.error("Failed to update user profile in AuthContext:", error);
-      // Potentially revert optimistic UI updates or show an error
-      throw error; // Re-throw for the ProfilePage or calling component to handle
+      throw error;
     }
-    // finally { setLoading(false); } // if using setLoading for this action
   };
 
   return (

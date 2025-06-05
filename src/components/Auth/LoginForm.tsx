@@ -18,23 +18,27 @@ const LoginForm: React.FC = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting: rhfIsSubmitting }, // Renamed
   } = useForm<Inputs>({ mode: "onTouched" });
-  const { login } = useAuth();
+
+  const { login, loading: authContextLoading } = useAuth(); // Destructure context loading
   const [apiError, setApiError] = useState<string | null>(null);
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setApiError(null);
     try {
       await login(data);
+      // AuthContext.login handles navigation to /dashboard on success
     } catch (error) {
       setApiError(
         error instanceof Error
           ? error.message
-          : "Login failed. Please try again."
+          : "Login failed. Please check your credentials and try again."
       );
     }
   };
+
+  const isLoading = rhfIsSubmitting || authContextLoading; // Combined loading state
 
   return (
     <motion.div
@@ -55,7 +59,7 @@ const LoginForm: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-3 p-3 bg-error/10 border border-error/30 text-error rounded-md"
+          className="mb-3 p-3 bg-error/10 border border-error/30 text-error text-sm rounded-md" // Text size sm
           role="alert"
         >
           {apiError}
@@ -88,7 +92,7 @@ const LoginForm: React.FC = () => {
             type="submit"
             variant="primary"
             className="w-full"
-            isLoading={isSubmitting}
+            isLoading={isLoading} // Use combined loading state
             size="lg"
           >
             Login
