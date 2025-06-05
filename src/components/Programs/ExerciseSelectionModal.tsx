@@ -1,4 +1,4 @@
-// /src/components/Programs/ExerciseSelectionModal.tsx (NEW FILE)
+// /src/components/Programs/ExerciseSelectionModal.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import Modal from "../UI/Modal";
