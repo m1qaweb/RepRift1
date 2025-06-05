@@ -12,7 +12,6 @@ type ThemeMode = "light" | "dark";
 interface ThemeContextType {
   theme: ThemeMode;
   toggleTheme: () => void;
-  // currentThemeColors: ThemeColors; // Optional: provide direct access to color palette
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -44,13 +43,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };
 
-  // Optional: expose specific theme colors
-  // const currentThemeColors = theme === 'light' ? themeConfig.light : themeConfig.dark;
-
   return (
-    <ThemeContext.Provider
-      value={{ theme, toggleTheme /*, currentThemeColors */ }}
-    >
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

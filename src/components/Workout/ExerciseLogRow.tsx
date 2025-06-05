@@ -1,4 +1,4 @@
-// /src/components/Workout/ExerciseLogRow.tsx – Displays a single exercise during workout logging.
+// /src/components/Workout/ExerciseLogRow.tsx
 import React from "react";
 import { motion } from "framer-motion";
 import { Exercise } from "../../utils/fakeApi";
@@ -30,46 +30,43 @@ const ExerciseLogRow: React.FC<ExerciseLogRowProps> = ({
   onTimerStart,
   isTimerActive,
 }) => {
-  const rowVariants = {
-    initial: { opacity: 0, x: -10 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: 10 }, // Not typically used here unless removing rows dynamically from this component
-  };
-
   const handleSetCompleteToggle = (setIndex: number) => {
-    onSetChange(setIndex, "completed", !loggedSets[setIndex].completed);
-    if (!loggedSets[setIndex].completed && !isTimerActive) {
-      // If marking as complete, start timer
+    const currentlyCompleted = loggedSets[setIndex].completed;
+    onSetChange(setIndex, "completed", !currentlyCompleted);
+    if (!currentlyCompleted && !isTimerActive) {
       onTimerStart(exercise.restInterval);
     }
   };
 
+  const inputStyle = (completed: boolean) =>
+    `w-full text-sm px-2 py-1.5 border rounded-md bg-transparent focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary
+     ${completed ? "border-brand-border opacity-70" : "border-brand-border"}
+     disabled:opacity-50 disabled:cursor-not-allowed`;
+
   return (
-    <motion.div
-      variants={rowVariants}
-      className="p-4 border border-light-border dark:border-dark-border rounded-lg bg-light-card/50 dark:bg-dark-card/50"
-    >
+    <motion.div className="p-4 border border-brand-border rounded-lg bg-brand-card/50">
       <div className="flex justify-between items-center mb-3">
         <div>
-          <h4 className="text-lg font-semibold text-light-text dark:text-dark-text">
+          <h4 className="text-lg font-semibold text-brand-text">
             {exercise.name}
           </h4>
-          <p className="text-xs text-light-secondary dark:text-dark-secondary">
+          <p className="text-xs text-brand-text-muted">
             Target: {exercise.sets} sets of {exercise.reps} reps,{" "}
             {exercise.restInterval}s rest
           </p>
         </div>
-        {/* Optional: button to start timer for first set or if user manually wants it */}
         {!isTimerActive && !loggedSets.every((s) => s.completed) && (
           <Button
             size="sm"
-            variant="secondary"
             onClick={() => onTimerStart(exercise.restInterval)}
             leftIcon={<PlayIcon className="h-4 w-4" />}
-            disabled={loggedSets.some(
-              (s) =>
-                s.completed && !loggedSets[loggedSets.indexOf(s) + 1]?.completed
-            )} // disable if in middle of sets
+            disabled={
+              isTimerActive ||
+              loggedSets.some(
+                (s, idx, arr) =>
+                  s.completed && arr[idx + 1] && !arr[idx + 1].completed
+              )
+            }
           >
             Start Rest
           </Button>
@@ -79,82 +76,67 @@ const ExerciseLogRow: React.FC<ExerciseLogRowProps> = ({
       <div className="space-y-3">
         {loggedSets.map((set, setIndex) => {
           const setCompleted = set.completed;
-          const rowAnimation = setCompleted
-            ? {
-                opacity: 0.6,
-                textDecoration: "line-through",
-                transition: { duration: 0.3 },
-              }
-            : { opacity: 1, textDecoration: "none" };
-
           return (
-            <motion.div
+            <div
               key={setIndex}
-              animate={rowAnimation}
-              className={`grid grid-cols-12 gap-2 items-center p-2 rounded-md ${
-                setCompleted ? "bg-green-500/10 dark:bg-green-500/20" : ""
-              }`}
+              className={`grid grid-cols-12 gap-2 items-center p-2 rounded-md 
+                          transition-colors duration-100 ease-in-out
+                          ${
+                            setCompleted
+                              ? "opacity-60 line-through"
+                              : "opacity-100"
+                          }
+                          ${
+                            setCompleted
+                              ? "bg-success/10"
+                              : "bg-transparent hover:bg-brand-card/30"
+                          }`}
             >
-              <span className="col-span-1 text-sm font-medium text-light-secondary dark:text-dark-secondary">
+              <span className="col-span-1 text-sm font-medium text-brand-text-muted">
                 Set {setIndex + 1}
               </span>
               <div className="col-span-4 md:col-span-3">
-                <label
-                  htmlFor={`ex-${exercise.id}-set-${setIndex}-reps`}
-                  className="sr-only"
-                >
-                  Reps
-                </label>
                 <input
                   type="number"
                   id={`ex-${exercise.id}-set-${setIndex}-reps`}
                   placeholder="Reps"
-                  value={set.reps === null ? "" : set.reps}
+                  value={set.reps ?? ""}
                   onChange={(e) =>
                     onSetChange(setIndex, "reps", e.target.value)
                   }
                   disabled={setCompleted}
-                  className="w-full text-sm px-2 py-1 border rounded-md bg-transparent border-gray-300 dark:border-gray-600 disabled:opacity-70"
+                  className={inputStyle(setCompleted)}
                 />
               </div>
               <div className="col-span-4 md:col-span-3">
-                <label
-                  htmlFor={`ex-${exercise.id}-set-${setIndex}-weight`}
-                  className="sr-only"
-                >
-                  Weight (kg)
-                </label>
                 <input
                   type="number"
                   id={`ex-${exercise.id}-set-${setIndex}-weight`}
                   placeholder="Weight"
-                  value={set.weight === null ? "" : set.weight}
-                  step="0.5"
+                  value={set.weight ?? ""}
+                  step="0.25"
                   onChange={(e) =>
                     onSetChange(setIndex, "weight", e.target.value)
                   }
                   disabled={setCompleted}
-                  className="w-full text-sm px-2 py-1 border rounded-md bg-transparent border-gray-300 dark:border-gray-600 disabled:opacity-70"
+                  className={inputStyle(setCompleted)}
                 />
               </div>
               <div className="col-span-3 md:col-span-2 flex justify-center">
-                <motion.button
+                <button
                   onClick={() => handleSetCompleteToggle(setIndex)}
-                  className={`p-2 rounded-full transition-colors 
-                                ${
-                                  setCompleted
-                                    ? "bg-green-500 text-white hover:bg-green-600"
-                                    : "bg-gray-200 dark:bg-gray-600 text-light-text dark:text-dark-text hover:bg-gray-300 dark:hover:bg-gray-500"
-                                }`}
-                  whileTap={{ scale: 0.9 }}
-                  title={
-                    setCompleted ? "Mark as Incomplete" : "Mark as Complete"
-                  }
+                  className={`p-1.5 rounded-full transition-colors duration-200 ease-in-out flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 
+                              ${
+                                setCompleted
+                                  ? "bg-success text-white hover:bg-success/90 focus-visible:ring-success"
+                                  : "bg-brand-secondary/30 text-brand-text hover:bg-brand-secondary/50 focus-visible:ring-brand-secondary"
+                              }`}
+                  title={setCompleted ? "Mark Incomplete" : "Mark Complete"}
                 >
                   <CheckIcon className="h-4 w-4" />
-                </motion.button>
+                </button>
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>

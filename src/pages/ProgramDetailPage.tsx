@@ -119,12 +119,10 @@ const ProgramDetailPage: React.FC = () => {
       >
         <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-light-text dark:text-dark-text">
+            <h1 className="text-3xl font-bold ttext-brand-text">
               {program.title}
             </h1>
-            <p className="text-light-secondary dark:text-dark-secondary mt-1">
-              {program.description}
-            </p>
+            <p className="text-brand-muted mt-1">{program.description}</p>
           </div>
           <div className="mt-4 sm:mt-0 flex space-x-2">
             <Button
@@ -147,7 +145,7 @@ const ProgramDetailPage: React.FC = () => {
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <h2 className="text-2xl font-semibold text-light-text dark:text-dark-text mb-4">
+        <h2 className="text-2xl font-semibold text-brand-text mb-4">
           Exercises in this Program
         </h2>
         {program.exercises.length > 0 ? (
@@ -161,26 +159,20 @@ const ProgramDetailPage: React.FC = () => {
                 animate="visible" // Target the 'visible' variant
               >
                 <Card className="p-4 border border-light-border/50 dark:border-dark-border/50">
-                  <h3 className="text-lg font-medium text-light-primary dark:text-dark-primary">
+                  <h3 className="text-lg font-medium text-brand-primary">
                     {exercise.name}
                   </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-sm text-light-secondary dark:text-dark-secondary">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-sm text-brand-muted">
                     <p>
-                      <span className="font-medium text-light-text dark:text-dark-text">
-                        Sets:
-                      </span>{" "}
+                      <span className="font-medium text-brand-text">Sets:</span>{" "}
                       {exercise.sets}
                     </p>
                     <p>
-                      <span className="font-medium text-light-text dark:text-dark-text">
-                        Reps:
-                      </span>{" "}
+                      <span className="font-medium text-brand-text">Reps:</span>{" "}
                       {exercise.reps}
                     </p>
                     <p>
-                      <span className="font-medium text-light-text dark:text-dark-text">
-                        Rest:
-                      </span>{" "}
+                      <span className="font-medium text-brand-text">Rest:</span>{" "}
                       {exercise.restInterval}s
                     </p>
                   </div>
@@ -189,7 +181,7 @@ const ProgramDetailPage: React.FC = () => {
             ))}
           </div>
         ) : (
-          <p className="text-light-secondary dark:text-dark-secondary">
+          <p className="text-brand-muted">
             No exercises have been added to this program yet.
           </p>
         )}

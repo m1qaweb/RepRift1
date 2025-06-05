@@ -1,240 +1,389 @@
-// /src/components/Layout/Navbar.tsx – responsive navbar with Framer Motion animations
-import React, { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+// /src/components/Layout/Navbar.tsx (Key Theming Adjustments)
+import React, { useState, useEffect } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
-import Button from "../UI/Button"; // Your Button component
+import Button from "../UI/Button";
 import {
   Bars3Icon,
   XMarkIcon,
   SunIcon,
   MoonIcon,
   ArrowRightOnRectangleIcon,
-  UserCircleIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 
+// NavItem Component (retained from previous version)
 interface NavItemProps {
   to: string;
   children: React.ReactNode;
-  onClick?: () => void; // For mobile menu close
+  onClick?: () => void;
 }
+const NavItem: React.FC<NavItemProps> = ({ to, children, onClick }) => {
+  return (
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={({ isActive }) =>
+        `relative px-2.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors duration-150 block
+         whitespace-nowrap 
+         ${
+           isActive
+             ? "text-brand-primary"
+             : "text-brand-text hover:text-brand-primary"
+         }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {children}
+          {isActive && (
+            <motion.div
+              className="absolute bottom-[-2px] left-0 right-0 h-[3px] bg-brand-primary"
+              layoutId="underline-navbar-shared"
+              initial={false}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            />
+          )}
+        </>
+      )}
+    </NavLink>
+  );
+};
 
-const NavItem: React.FC<NavItemProps> = ({ to, children, onClick }) => (
-  <NavLink
-    to={to}
-    onClick={onClick}
-    className={({ isActive }) =>
-      `relative px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 
-       ${
-         isActive
-           ? "text-light-primary dark:text-dark-primary"
-           : "text-light-text dark:text-dark-text hover:text-light-primary dark:hover:text-dark-primary"
-       }`
-    }
-  >
-    {({ isActive }) => (
-      <>
-        {children}
-        {isActive && (
-          <motion.div
-            className="absolute bottom-0 left-0 right-0 h-0.5 bg-light-primary dark:bg-dark-primary"
-            layoutId="underline" // layoutId enables shared layout animation
-            initial={false}
-            transition={{ type: "spring", stiffness: 350, damping: 30 }}
-          />
-        )}
-      </>
-    )}
-  </NavLink>
-);
+// getPageTitle (retained from previous version)
+const getPageTitle = (pathname: string): string => {
+  const cleanPath = pathname === "/" ? pathname : pathname.replace(/\/$/, "");
+  if (
+    cleanPath.startsWith("/programs/") &&
+    cleanPath.split("/").length > 2 &&
+    cleanPath !== "/programs"
+  ) {
+    return "Program Details";
+  }
+  if (cleanPath.startsWith("/log-workout")) return "Log Workout";
+  switch (cleanPath) {
+    case "/":
+      return "Dashboard";
+    case "/dashboard":
+      return "Dashboard";
+    case "/programs":
+      return "Programs";
+    case "/history":
+      return "History";
+    case "/analytics":
+      return "Analytics";
+    case "/ffmi-calculator":
+      return "FFMI Calculator";
+    case "/profile":
+      return "My Account"; // Updated for consistency
+    case "/login":
+      return "Login";
+    case "/signup":
+      return "Sign Up";
+    default:
+      const pathSegments = cleanPath.substring(1).split("/");
+      const firstSegment = pathSegments[0].replace(/-/g, " ");
+      return (
+        firstSegment
+          .split(" ")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ") || "Page"
+      );
+  }
+};
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const navigate = useNavigate();
+  // useNavigate and useLocation are not strictly needed at this top level after refactor,
+  // but if you add more direct navigation calls, they are useful.
+  // For NavLink and Link, they handle navigation context internally.
+  const location = useLocation();
+  const [currentPageTitle, setCurrentPageTitle] = useState<string>(
+    getPageTitle(location.pathname)
+  );
+
+  useEffect(() => {
+    setCurrentPageTitle(getPageTitle(location.pathname));
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logout();
-    // Navigation handled by AuthContext or redirect here if necessary
+    setMobileMenuOpen(false); // Also ensure mobile menu closes on logout
   };
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
-  const navLinks = user
+  const navLinksDefinition = user
     ? [
         { path: "/dashboard", label: "Dashboard" },
         { path: "/programs", label: "Programs" },
-        { path: "/log-workout", label: "Log Workout" },
         { path: "/history", label: "History" },
         { path: "/analytics", label: "Analytics" },
+        // { path: "/ffmi-calculator", label: "FFMI Calc" }, // Optionally keep or move to profile/tools
       ]
     : [];
 
+  const appLogoTextShadow = `0px 1px 3px rgb(var(--color-primary-rgb)/0.15)`;
+
+  // Fallback avatar generator (similar to ProfilePage but for smaller size)
+  const generateNavbarAvatarUrl = (name?: string, size: number = 32) => {
+    const initial = name
+      ? encodeURIComponent(name.charAt(0).toUpperCase())
+      : "U";
+    return `https://ui-avatars.com/api/?name=${initial}&background=rgb(var(--color-primary-rgb))&color=rgb(var(--color-background-rgb))&size=${size}&font-size=0.45&bold=true&format=svg`;
+  };
+
   return (
-    <nav className="sticky top-0 z-40 bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-md shadow-sm">
-      <div className="container mx-auto px-4">
+    <nav className="sticky top-0 z-[60] bg-brand-card/85 dark:bg-brand-card/90 backdrop-blur-xl shadow-sm transition-colors duration-300">
+      <div className="container mx-auto px-3 sm:px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo and Desktop Nav */}
-          <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0">
+          <div className="flex items-center flex-grow min-w-0">
+            <Link to={user ? "/dashboard" : "/"} className="flex-shrink-0">
               <motion.h1
-                className="text-2xl font-bold text-light-primary dark:text-dark-primary"
-                whileHover={{
-                  scale: 1.05,
-                  textShadow: "0px 0px 4px rgba(96, 165, 250, 0.5)",
-                }}
+                className="text-xl sm:text-2xl font-bold text-brand-primary"
+                whileHover={{ scale: 1.03, textShadow: appLogoTextShadow }}
+                transition={{ type: "spring", stiffness: 350, damping: 15 }}
               >
-                Workout
-                <span className="text-light-text dark:text-dark-text">App</span>
-              </motion.h1>{" "}
-              {/* Replace with actual logo if available */}
+                Rep<span className="text-brand-text">Rift</span>
+              </motion.h1>
             </Link>
-            <div className="hidden md:ml-10 md:flex md:items-baseline md:space-x-4">
-              {navLinks.map((link) => (
+            {user && (
+              <div className="hidden sm:flex items-center ml-2 sm:ml-3 overflow-hidden">
+                <ChevronRightIcon className="h-4 w-4 text-brand-text-muted flex-shrink-0" />
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={currentPageTitle}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 8, transition: { duration: 0.1 } }}
+                    transition={{ duration: 0.2, ease: "circOut" }}
+                    className="ml-1.5 sm:ml-2 text-sm font-medium text-brand-text truncate max-w-[100px] md:max-w-[150px] lg:max-w-[200px]"
+                    title={currentPageTitle}
+                  >
+                    {currentPageTitle}
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center">
+            <div className="hidden md:flex items-baseline space-x-1 lg:space-x-2 ml-4">
+              {navLinksDefinition.map((link) => (
                 <NavItem key={link.path} to={link.path}>
                   {link.label}
                 </NavItem>
               ))}
             </div>
-          </div>
 
-          {/* Right side icons and User menu */}
-          <div className="flex items-center">
-            <motion.button
-              onClick={toggleTheme}
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              aria-label={
-                theme === "dark"
-                  ? "Switch to light theme"
-                  : "Switch to dark theme"
-              }
-              whileHover={{ scale: 1.1, rotate: theme === "dark" ? -15 : 15 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              {theme === "dark" ? (
-                <SunIcon className="h-6 w-6 text-yellow-400" />
-              ) : (
-                <MoonIcon className="h-6 w-6 text-slate-700" />
-              )}
-            </motion.button>
-
-            {user ? (
-              <div className="ml-3 relative">
-                {/* This could be a dropdown menu for profile, settings, logout */}
-                <Button
-                  variant="ghost"
-                  onClick={() => navigate("/profile")}
-                  className="mr-2"
-                  leftIcon={<UserCircleIcon className="h-5 w-5" />}
-                >
-                  Profile
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleLogout}
-                  leftIcon={<ArrowRightOnRectangleIcon className="h-5 w-5" />}
-                >
-                  Logout
-                </Button>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center space-x-2 ml-4">
-                <Link to="/login">
-                  <Button variant="ghost">Login</Button>
-                </Link>
-                <Link to="/signup">
-                  <Button variant="primary">Sign Up</Button>
-                </Link>
-              </div>
-            )}
-            {/* Mobile menu button */}
-            <div className="ml-2 md:hidden">
-              <button
-                onClick={toggleMobileMenu}
-                className="p-2 rounded-md text-light-text dark:text-dark-text hover:text-light-primary dark:hover:text-dark-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-light-primary"
-                aria-expanded={mobileMenuOpen}
-                aria-controls="mobile-menu"
+            <div className="flex items-center flex-shrink-0 ml-2 sm:ml-3">
+              <motion.button
+                onClick={toggleTheme}
+                className="p-1.5 sm:p-2 rounded-full text-brand-text-muted hover:bg-brand-secondary/10 hover:text-brand-primary focus-visible:text-brand-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
+                aria-label={
+                  theme === "dark"
+                    ? "Switch to light theme"
+                    : "Switch to dark theme"
+                }
+                whileHover={{
+                  scale: 1.12,
+                  rotate: theme === "dark" ? -25 : 25,
+                }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 300, damping: 15 }}
               >
-                <span className="sr-only">Open main menu</span>
-                {mobileMenuOpen ? (
-                  <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
+                {theme === "dark" ? (
+                  <SunIcon className="h-5 w-5 text-brand-text" />
                 ) : (
-                  <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
+                  <MoonIcon className="h-5 w-5 text-brand-text" />
                 )}
-              </button>
+              </motion.button>
+
+              {user ? (
+                <div className="ml-2 sm:ml-3 flex items-center gap-1.5 sm:gap-2">
+                  <Link
+                    to="/profile"
+                    className="flex items-center p-1 rounded-full hover:bg-brand-secondary/10 transition-colors group"
+                    title="My Account"
+                  >
+                    {user.avatarUrl ? (
+                      <motion.img
+                        key={user.avatarUrl} // Key to force re-render if URL changes
+                        src={user.avatarUrl}
+                        alt={user.name || "User Avatar"}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-transparent group-hover:border-brand-primary transition-colors"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                      />
+                    ) : (
+                      <img // Fallback using ui-avatars
+                        src={generateNavbarAvatarUrl(user.name, 32)}
+                        alt={user.name || "User Avatar"}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover"
+                      />
+                    )}
+                    {user.name && (
+                      <span className="ml-1.5 hidden lg:inline text-xs font-medium text-brand-text group-hover:text-brand-primary transition-colors">
+                        {user.name.split(" ")[0]} {/* Display first name */}
+                      </span>
+                    )}
+                  </Link>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="!py-1.5 !px-2.5" // Custom padding
+                    title="Logout"
+                  >
+                    <ArrowRightOnRectangleIcon className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+                    {/* Removed text for cleaner look, icon is clear */}
+                  </Button>
+                </div>
+              ) : (
+                <div className="hidden md:flex items-center space-x-1.5 ml-2">
+                  <Link to="/login">
+                    {" "}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-brand-text-muted hover:text-brand-primary"
+                    >
+                      Login
+                    </Button>{" "}
+                  </Link>
+                  <Link to="/signup">
+                    {" "}
+                    <Button variant="primary" size="sm">
+                      Sign Up
+                    </Button>{" "}
+                  </Link>
+                </div>
+              )}
+
+              {user && ( // Mobile menu toggle button
+                <div className="ml-1 sm:ml-2 md:hidden">
+                  <button
+                    onClick={toggleMobileMenu}
+                    className="p-1.5 rounded-md text-brand-text hover:bg-brand-secondary/10 hover:text-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary"
+                    aria-expanded={mobileMenuOpen}
+                    aria-controls="mobile-menu"
+                  >
+                    <span className="sr-only">Open main menu</span>
+                    <AnimatePresence initial={false} mode="sync">
+                      {mobileMenuOpen ? (
+                        <motion.div
+                          key="xmark"
+                          initial={{ rotate: -90, opacity: 0 }}
+                          animate={{ rotate: 0, opacity: 1 }}
+                          exit={{ rotate: 90, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <XMarkIcon className="block h-6 w-6" />
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="bars3"
+                          initial={{ rotate: 90, opacity: 0 }}
+                          animate={{ rotate: 0, opacity: 1 }}
+                          exit={{ rotate: -90, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <Bars3Icon className="block h-6 w-6" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu (uses Sidebar.tsx animation style) */}
+      {/* Mobile Menu Panel */}
       <AnimatePresence>
-        {mobileMenuOpen &&
-          user && ( // Show menu only if user logged in and menu open
-            <motion.div
-              id="mobile-menu"
-              className="md:hidden fixed inset-0 z-30 pt-16 bg-light-card dark:bg-dark-card shadow-lg" // pt-16 to offset navbar height
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
-            >
-              <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                {navLinks.map((link) => (
-                  <NavItem
-                    key={link.path}
-                    to={link.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <span className="block px-3 py-2">{link.label}</span>
-                  </NavItem>
-                ))}
-              </div>
-              {user && (
-                <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center px-5">
-                    <UserCircleIcon className="h-8 w-8 text-light-secondary dark:text-dark-secondary mr-3" />
-                    <div>
-                      <div className="text-base font-medium text-light-text dark:text-dark-text">
-                        {user.name}
-                      </div>
-                      <div className="text-sm font-medium text-light-secondary dark:text-dark-secondary">
-                        {user.email}
-                      </div>
-                    </div>
+        {mobileMenuOpen && user && (
+          <motion.div
+            id="mobile-menu"
+            className="md:hidden fixed inset-x-0 top-16 z-[55] bg-brand-card border-t border-brand-border shadow-lg overflow-y-auto max-h-[calc(100vh-4rem)] custom-scrollbar-thin"
+            initial={{ y: "-100%", opacity: 0 }}
+            animate={{ y: "0%", opacity: 1 }}
+            exit={{ y: "-100%", opacity: 0 }}
+            transition={{
+              type: "tween",
+              ease: [0.4, 0, 0.2, 1],
+              duration: 0.35,
+            }}
+          >
+            <div className="px-4 py-3 border-b border-brand-border/50">
+              <span className="text-sm font-medium text-brand-text">
+                {currentPageTitle}
+              </span>
+            </div>
+
+            <div className="px-2 py-3 space-y-1 sm:px-3">
+              {navLinksDefinition.map((link) => (
+                <NavItem
+                  key={`mobile-${link.path}`}
+                  to={link.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="block px-3 py-2.5 text-base">
+                    {link.label}
+                  </span>
+                </NavItem>
+              ))}
+            </div>
+
+            <div className="pt-4 pb-3 border-t border-brand-border">
+              <Link // Make the entire user block clickable to go to profile
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center px-5 mb-3 hover:bg-brand-secondary/10 dark:hover:bg-brand-secondary/20 rounded-md py-2 mx-2 transition-colors"
+              >
+                {user.avatarUrl ? (
+                  <motion.img
+                    key={user.avatarUrl}
+                    src={user.avatarUrl}
+                    alt={user.name || "User Avatar"}
+                    className="w-10 h-10 rounded-full object-cover mr-3 flex-shrink-0"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  />
+                ) : (
+                  <img // Fallback for mobile
+                    src={generateNavbarAvatarUrl(user.name, 40)}
+                    alt={user.name || "User Avatar"}
+                    className="w-10 h-10 rounded-full object-cover mr-3 flex-shrink-0"
+                  />
+                )}
+                <div className="min-w-0">
+                  <div className="text-base font-medium text-brand-text truncate">
+                    {user.name || "User"}
                   </div>
-                  <div className="mt-3 px-2 space-y-1">
-                    <NavLink
-                      to="/profile"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium text-light-text dark:text-dark-text hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Your Profile
-                    </NavLink>
-                    <NavLink
-                      to="/settings"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium text-light-text dark:text-dark-text hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Settings
-                    </NavLink>
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-light-text dark:text-dark-text hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Sign out
-                    </button>
+                  <div className="text-sm font-medium text-brand-text-muted truncate">
+                    {user.email}
                   </div>
                 </div>
-              )}
-            </motion.div>
-          )}
+              </Link>
+
+              <div className="px-2 space-y-1">
+                {/* Removed settings link from here, profile now contains settings */}
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-left px-3 py-3 text-base font-medium text-brand-text hover:bg-brand-secondary/10 dark:hover:bg-brand-secondary/20 rounded-md transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </nav>
   );

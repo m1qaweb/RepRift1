@@ -1,76 +1,40 @@
-// /src/components/Auth/SignupForm.tsx – User registration form with animated labels.
+// /src/components/Auth/SignupForm.tsx
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useAuth } from "../../contexts/AuthContext";
 import Button from "../UI/Button";
 import {
-  // These are all used
   validateEmail,
   validatePassword,
   validateRequired,
-} from "../../utils/validators"; // Assumes validators.ts is fixed to return string | true
+} from "../../utils/validators";
 import { Link } from "react-router-dom";
+import InputField from "./InputField";
+import {
+  UserIcon,
+  AtSymbolIcon,
+  LockClosedIcon,
+} from "@heroicons/react/24/outline";
 
 type Inputs = {
   name: string;
   email: string;
-  pass: string; // Using "pass", normally "password"
+  pass: string;
   confirmPassword?: string;
 };
 
-// Assuming InputField component remains the same as you provided
-const InputField: React.FC<{
-  id: string;
-  label: string;
-  type: string;
-  register: any; // This is the invocation like register("name", options)
-  error?: string;
-  placeholder?: string;
-}> = ({ id, label, type, register, error, placeholder }) => (
-  <div className="mb-4">
-    <label
-      htmlFor={id}
-      className="block text-sm font-medium text-light-text dark:text-dark-text mb-1"
-    >
-      {label}
-    </label>
-    <input
-      id={id}
-      type={type}
-      {...register} // Spread the register invocation
-      placeholder={placeholder || label}
-      className={`w-full px-3 py-2 border rounded-md bg-transparent
-                  ${
-                    error
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                      : "border-gray-300 dark:border-gray-600 focus:border-light-primary dark:focus:border-dark-primary focus:ring-light-primary dark:focus:ring-dark-primary"
-                  }
-                  text-light-text dark:text-dark-text`}
-    />
-    {error && (
-      <motion.p
-        initial={{ opacity: 0, y: -5 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-red-500 text-xs mt-1"
-      >
-        {error}
-      </motion.p>
-    )}
-  </div>
-);
-
 const SignupForm: React.FC = () => {
   const {
-    register, // This is the main register function from useForm
+    register,
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<Inputs>();
+  } = useForm<Inputs>({ mode: "onTouched" });
   const { signup } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const passwordValue = watch("pass");
+  const passwordValue = watch("pass", "");
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setApiError(null);
@@ -91,29 +55,36 @@ const SignupForm: React.FC = () => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-md mx-auto mt-10 p-8 bg-light-card dark:bg-dark-card rounded-xl shadow-2xl"
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="max-w-md mx-auto p-6 sm:p-8
+                 bg-brand-card/80 dark:bg-brand-card/70
+                 backdrop-blur-lg
+                 rounded-2xl
+                 border border-brand-border/30
+                 shadow-xl dark:shadow-[0_10px_30px_-10px_rgb(var(--color-primary-rgb)/0.25)]"
     >
-      <h2 className="text-3xl font-bold text-center mb-8 text-light-text dark:text-dark-text">
+      <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10 text-brand-text">
         Create Account
       </h2>
       {apiError && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md"
+          className="mb-4 p-3 bg-error/10 border border-error/30 text-error rounded-md"
           role="alert"
         >
           {apiError}
         </motion.div>
       )}
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-2">
         <InputField
           id="name"
           label="Full Name"
           type="text"
-          // Pass the invocation of register
+          autoComplete="name"
+          leadingIcon={<UserIcon />}
           register={register("name", {
             validate: (value) => validateRequired(value, "Full Name"),
           })}
@@ -121,8 +92,10 @@ const SignupForm: React.FC = () => {
         />
         <InputField
           id="email"
-          label="Email"
+          label="Email Address"
           type="email"
+          autoComplete="email"
+          leadingIcon={<AtSymbolIcon />}
           register={register("email", {
             required: "Email is required",
             validate: validateEmail,
@@ -133,6 +106,8 @@ const SignupForm: React.FC = () => {
           id="pass"
           label="Password"
           type="password"
+          autoComplete="new-password"
+          leadingIcon={<LockClosedIcon />}
           register={register("pass", {
             required: "Password is required",
             validate: validatePassword,
@@ -143,6 +118,8 @@ const SignupForm: React.FC = () => {
           id="confirmPassword"
           label="Confirm Password"
           type="password"
+          autoComplete="new-password"
+          leadingIcon={<LockClosedIcon />}
           register={register("confirmPassword", {
             required: "Confirm password is required",
             validate: (value) =>
@@ -150,21 +127,23 @@ const SignupForm: React.FC = () => {
           })}
           error={errors.confirmPassword?.message}
         />
-
-        <Button
-          type="submit"
-          variant="primary"
-          className="w-full mt-4"
-          isLoading={isSubmitting}
-        >
-          Sign Up
-        </Button>
+        <div className="pt-5">
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full"
+            isLoading={isSubmitting}
+            size="lg"
+          >
+            Sign Up
+          </Button>
+        </div>
       </form>
-      <p className="mt-6 text-center text-sm text-light-secondary dark:text-dark-secondary">
+      <p className="mt-10 text-center text-sm text-brand-text-muted">
         Already have an account?{" "}
         <Link
           to="/login"
-          className="font-medium text-light-primary dark:text-dark-primary hover:underline"
+          className="font-medium text-brand-primary hover:text-brand-primary/80 hover:underline"
         >
           Login
         </Link>

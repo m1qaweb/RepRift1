@@ -1,4 +1,4 @@
-// /src/contexts/AuthContext.tsx - Manages user authentication state.
+// /src/contexts/AuthContext.tsx
 import React, {
   createContext,
   useContext,
@@ -7,7 +7,7 @@ import React, {
   ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, fakeLogin, fakeSignup, fakeLogout } from "../utils/fakeApi"; // Assuming fakeApi provides these
+import { User, fakeLogin, fakeSignup, fakeLogout } from "../utils/fakeApi";
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +19,7 @@ interface AuthContextType {
     pass: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (updatedProfileData: Partial<User>) => Promise<void>; // <<< NEW FUNCTION
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,11 +28,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // To track initial auth state loading
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for persisted user session (e.g., from localStorage) on initial load
     const checkUserSession = async () => {
       setLoading(true);
       try {
@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         }
       } catch (error) {
         console.error("Failed to load user session:", error);
-        localStorage.removeItem("authUser"); // Clear corrupted data
+        localStorage.removeItem("authUser");
       } finally {
         setLoading(false);
       }
@@ -50,17 +50,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const login = async (credentials: { email: string; pass: string }) => {
+    // ... (login logic - remains the same, but consider removing direct navigation from here)
     setLoading(true);
     try {
       const loggedInUser = await fakeLogin(credentials.email, credentials.pass);
       setUser(loggedInUser);
       localStorage.setItem("authUser", JSON.stringify(loggedInUser));
-      navigate("/dashboard");
+      // navigate("/dashboard"); // Often better to let the calling component handle navigation
     } catch (error) {
-      console.error("Login failed:", error);
-      setUser(null); // Ensure user is null on failed login
-      localStorage.removeItem("authUser");
-      throw error; // Re-throw for the form to handle
+      /* ... */ throw error;
     } finally {
       setLoading(false);
     }
@@ -71,38 +69,76 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     email: string;
     pass: string;
   }) => {
+    // ... (signup logic - remains the same, but consider removing direct navigation from here)
     setLoading(true);
     try {
       await fakeSignup(details.name, details.email, details.pass);
-      navigate("/login"); // Redirect to login after successful signup
+      // navigate("/login");
     } catch (error) {
-      console.error("Signup failed:", error);
-      throw error; // Re-throw for the form to handle
+      /* ... */ throw error;
     } finally {
       setLoading(false);
     }
   };
 
   const logout = async () => {
+    // ... (logout logic - navigation after state update is fine here)
     setLoading(true);
     try {
       await fakeLogout();
+    } catch (error) {
+      console.error("Logout API failed:", error);
+    } finally {
       setUser(null);
       localStorage.removeItem("authUser");
       navigate("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      // Even if fakeLogout fails, we should clear local state
-      setUser(null);
-      localStorage.removeItem("authUser");
-      throw error;
-    } finally {
       setLoading(false);
     }
   };
 
+  // <<< NEW updateUser function IMPLEMENTATION >>>
+  const updateUser = async (updatedProfileData: Partial<User>) => {
+    if (!user) {
+      console.error("Cannot update user: no user is currently logged in.");
+      throw new Error("User not authenticated for update.");
+    }
+    // setLoading(true); // Optional: if you want loading state for this specific action
+    try {
+      // In a real app, this would be an API call:
+      // const response = await api.updateUserProfile(user.id, updatedProfileData);
+      // const trulyUpdatedUserFromServer = response.data;
+
+      // For simulation, we merge the changes and update state + localStorage:
+      const newUserData = { ...user, ...updatedProfileData };
+
+      setUser(newUserData); // Update AuthContext's internal state
+      localStorage.setItem("authUser", JSON.stringify(newUserData)); // Update localStorage
+      console.log(
+        "AuthContext: User updated and saved to localStorage",
+        newUserData
+      );
+
+      // You might want to return the newUserData or void
+      // return newUserData;
+    } catch (error) {
+      console.error("Failed to update user profile in AuthContext:", error);
+      // Potentially revert optimistic UI updates or show an error
+      throw error; // Re-throw for the ProfilePage or calling component to handle
+    }
+    // finally { setLoading(false); } // if using setLoading for this action
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        signup,
+        logout,
+        updateUser /* <<< ADDED HERE >>> */,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

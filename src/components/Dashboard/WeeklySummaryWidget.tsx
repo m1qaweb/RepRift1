@@ -1,6 +1,5 @@
-// /src/components/Dashboard/WeeklySummaryWidget.tsx – Displays weekly workout minutes chart.
+// /src/components/Dashboard/WeeklySummaryWidget.tsx (Corrected)
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import {
   BarChart,
   Bar,
@@ -9,47 +8,51 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  // UPDATED: Removed Legend from this import
+  Cell,
 } from "recharts";
 import Card from "../UI/Card";
-// UPDATED: Removed WorkoutLog from this import
-import { fetchWorkoutLogs } from "../../utils/fakeApi";
+import Spinner from "../UI/Spinner";
+import { fetchWorkoutLogs, WorkoutLog } from "../../utils/fakeApi";
 import { getWeekDates, formatDate } from "../../utils/dateUtils";
 
 interface WeeklySummaryData {
-  name: string; // Day name e.g., "Mon"
+  name: string;
+  date: Date;
   minutes: number;
 }
 
 const WeeklySummaryWidget: React.FC = () => {
   const [chartData, setChartData] = useState<WeeklySummaryData[]>([]);
+  const [totalWeeklyMinutes, setTotalWeeklyMinutes] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    const weekDates = getWeekDates(new Date(), 1); // Monday as start of week
+    const weekDates = getWeekDates(new Date(), 1);
 
-    // Prepare initial data structure for the week
     const initialData: WeeklySummaryData[] = weekDates.map((date) => ({
-      name: formatDate(date, "E"), // 'Mon', 'Tue', etc.
+      name: formatDate(date, "E"),
+      date: date,
       minutes: 0,
     }));
 
-    fetchWorkoutLogs() // Fetch all logs, then filter (or ideally, API supports date range)
-      .then((logs) => {
-        // logs type is inferred here from fetchWorkoutLogs
-        const processedData = initialData.map((dayData, index) => {
-          const currentDate = weekDates[index];
+    fetchWorkoutLogs()
+      .then((logs: WorkoutLog[]) => {
+        let currentWeekTotal = 0;
+        const processedData = initialData.map((dayData) => {
           const logsForDay = logs.filter(
             (log) =>
-              new Date(log.date).toDateString() === currentDate.toDateString()
+              new Date(log.date).toDateString() === dayData.date.toDateString()
           );
           const totalMinutesForDay = logsForDay.reduce(
             (sum, log) => sum + (log.durationMinutes || 0),
             0
           );
+          currentWeekTotal += totalMinutesForDay;
           return { ...dayData, minutes: totalMinutesForDay };
         });
         setChartData(processedData);
+        setTotalWeeklyMinutes(currentWeekTotal);
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));
@@ -57,100 +60,76 @@ const WeeklySummaryWidget: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Card>
-        <p className="p-4 text-center">Loading weekly summary...</p>
+      <Card className="flex items-center justify-center min-h-[200px]">
+        <Spinner size="md" />
+        <p className="ml-2 text-brand-text-muted">Loading weekly summary...</p>
       </Card>
     );
   }
 
   return (
     <Card>
-      <h3 className="text-lg font-semibold p-4 pb-2 text-light-text dark:text-dark-text">
-        Weekly Workout Minutes
-      </h3>
+      <div className="p-4 sm:p-5">
+        <div className="flex justify-between items-center mb-1">
+          <h3 className="text-base sm:text-lg font-semibold text-brand-text">
+            Weekly Activity
+          </h3>
+        </div>
+        <p className="text-2xl sm:text-3xl font-bold text-brand-primary mb-3">
+          {totalWeeklyMinutes}{" "}
+          <span className="text-sm font-medium text-brand-text-muted">
+            total minutes
+          </span>
+        </p>
+      </div>
+
       {chartData.some((d) => d.minutes > 0) ? (
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={200}>
           <BarChart
             data={chartData}
-            margin={{ top: 5, right: 20, left: -20, bottom: 5 }}
+            margin={{ top: 0, right: 5, left: -25, bottom: 0 }}
+            barCategoryGap="30%"
           >
-            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+            <CartesianGrid
+              strokeDasharray="4 4"
+              stroke="rgb(var(--color-border) / 0.2)"
+              vertical={false}
+            />
             <XAxis
               dataKey="name"
-              fontSize={12}
+              fontSize={10}
               tickLine={false}
               axisLine={false}
-              stroke="currentColor"
             />
-            <YAxis
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-              stroke="currentColor"
-            />
+            <YAxis fontSize={10} tickLine={false} axisLine={false} />
             <Tooltip
-              contentStyle={{
-                backgroundColor: "rgba(31, 41, 55, 0.9)",
-                borderColor: "rgba(75, 85, 99, 1)",
-                borderRadius: "0.375rem",
-              }}
-              labelStyle={{
-                color: "#f9fafb",
-                marginBottom: "4px",
-                fontWeight: "600",
-              }}
-              itemStyle={{ color: "#cbd5e1" }} /* text-slate-300 */
-              cursor={{
-                fill: "rgba(100, 116, 139, 0.2)",
-              }} /* slate-500 with opacity */
+              cursor={{ fill: "rgb(var(--color-primary-rgb) / 0.1)" }}
+              formatter={(value: number) => [`${value} minutes`, "Activity"]}
             />
-            {/* If you decide to use Legend, uncomment it and its import */}
-            {/* <Legend /> */}
             <Bar
               dataKey="minutes"
-              name="Workout Minutes"
-              fill="url(#colorMinutes)"
+              radius={[4, 4, 0, 0]}
+              onMouseEnter={(data, index) => setActiveBarIndex(index)}
+              onMouseLeave={() => setActiveBarIndex(null)}
             >
               {chartData.map((entry, index) => (
-                <motion.rect
-                  key={`bar-${index}`}
-                  x={undefined} // Recharts handles position
-                  y={undefined}
-                  width={undefined}
-                  height={undefined}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.5,
-                    delay: index * 0.05,
-                    type: "spring",
-                    stiffness: 150,
-                    damping: 15,
-                  }}
+                <Cell
+                  key={`cell-${index}`}
+                  fill={
+                    activeBarIndex === index
+                      ? "var(--color-accent)"
+                      : "var(--color-primary)"
+                  }
+                  className="transition-fill duration-150"
                 />
               ))}
             </Bar>
-            {/* Gradient definition */}
-            <defs>
-              <linearGradient id="colorMinutes" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-primary, #3B82F6)"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-primary, #3B82F6)"
-                  stopOpacity={0.3}
-                />
-              </linearGradient>
-            </defs>
           </BarChart>
         </ResponsiveContainer>
       ) : (
-        <p className="p-4 pt-0 text-center text-light-secondary dark:text-dark-secondary">
-          No workout data for this week.
-        </p>
+        <div className="p-4 pt-0 text-center text-brand-text-muted min-h-[150px] flex items-center justify-center">
+          No workout data recorded for this week yet.
+        </div>
       )}
     </Card>
   );

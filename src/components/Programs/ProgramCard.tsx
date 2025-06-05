@@ -1,81 +1,99 @@
-// /src/components/Programs/ProgramCard.tsx – Displays a program's summary.
+// /src/components/Programs/ProgramCard.tsx
 import React from "react";
+import Button from "../UI/Button";
 import { motion } from "framer-motion";
-import Card from "../UI/Card"; // Your UI Card
+import Card from "../UI/Card";
 import { Program } from "../../utils/fakeApi";
-import { PencilSquareIcon } from "@heroicons/react/24/outline";
+import {
+  PencilSquareIcon,
+  EyeIcon,
+  BoltIcon,
+} from "@heroicons/react/24/outline";
 import { Link } from "react-router-dom";
 
 interface ProgramCardProps {
   program: Program;
-  onEditClick?: (programId: string) => void; // For handling edit action
+  onEditClick?: (programId: string) => void;
 }
 
 const ProgramCard: React.FC<ProgramCardProps> = ({ program, onEditClick }) => {
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20, scale: 0.95 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: { duration: 0.3, ease: "easeOut" },
-    },
+  const cardHoverEffect = {
+    y: -5,
   };
 
+  const totalExercises = program.exercises.length;
+
   return (
-    <motion.div variants={cardVariants}>
-      {" "}
-      {/* Animation handled by parent list if staggered */}
-      <Card className="flex flex-col justify-between h-full hover:shadow-lg transition-shadow">
-        <div>
-          <div className="flex justify-between items-start mb-2">
-            <Link to={`/programs/${program.id}`}>
-              <h3 className="text-xl font-semibold text-light-primary dark:text-dark-primary hover:underline">
-                {program.title}
-              </h3>
-            </Link>
-            {onEditClick && (
-              <motion.button
-                onClick={() => onEditClick(program.id)}
-                className="p-1 text-light-secondary dark:text-dark-secondary hover:text-light-primary dark:hover:text-dark-primary"
-                whileHover={{ rotate: 15, scale: 1.1 }}
-                title="Edit Program"
-              >
-                <PencilSquareIcon className="h-5 w-5" />
-              </motion.button>
-            )}
-          </div>
-          <p className="text-sm text-light-secondary dark:text-dark-secondary mb-3 h-16 overflow-hidden">
-            {program.description.length > 100
-              ? program.description.substring(0, 97) + "..."
-              : program.description}
-          </p>
-          {program.exercises && program.exercises.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs font-medium text-light-text dark:text-dark-text mb-1">
-                Exercises Preview:
-              </p>
-              <ul className="list-disc list-inside text-xs text-light-secondary dark:text-dark-secondary space-y-0.5">
-                {program.exercises.slice(0, 2).map((ex) => (
-                  <li key={ex.id}>{ex.name}</li>
-                ))}
-                {program.exercises.length > 2 && <li>...and more</li>}
-              </ul>
-            </div>
+    <Card
+      className="flex flex-col justify-between h-full group transition-all duration-300 ease-in-out"
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      whileHover={cardHoverEffect}
+    >
+      <div className="p-4">
+        <div className="flex justify-between items-start mb-3">
+          <Link to={`/programs/${program.id}`} className="flex-grow min-w-0">
+            <h3 className="text-lg sm:text-xl font-semibold text-brand-primary group-hover:text-[rgb(var(--color-primary-rgb)/0.8)] transition-colors truncate pr-2">
+              {program.title}
+            </h3>
+          </Link>
+          {onEditClick && (
+            <motion.button
+              onClick={() => onEditClick(program.id)}
+              className="p-1.5 text-brand-text-muted hover:text-brand-primary flex-shrink-0"
+              whileHover={{ rotate: 10, scale: 1.15 }}
+              title="Edit Program"
+            >
+              <PencilSquareIcon className="h-5 w-5" />
+            </motion.button>
           )}
         </div>
-        <div className="mt-auto pt-3 border-t border-light-border dark:border-dark-border">
-          <Link to={`/programs/${program.id}`}>
-            <motion.button
-              className="w-full text-sm font-medium text-light-primary dark:text-dark-primary hover:underline"
-              whileHover={{ x: 2 }}
-            >
-              View Details →
-            </motion.button>
-          </Link>
-        </div>
-      </Card>
-    </motion.div>
+        <p className="text-xs sm:text-sm text-brand-text-muted mb-4 h-12 sm:h-16 overflow-hidden line-clamp-3 sm:line-clamp-4">
+          {program.description || "No description provided."}
+        </p>
+        {totalExercises > 0 && (
+          <div className="mb-4 text-xs">
+            <div className="flex items-center text-brand-text-muted mb-1">
+              <BoltIcon className="h-3.5 w-3.5 mr-1.5 text-brand-accent" />
+              <span className="font-medium text-brand-text">
+                {totalExercises}
+              </span>{" "}
+              Exercises
+            </div>
+            <ul className="list-none space-y-0.5 pl-5">
+              {program.exercises.slice(0, 2).map((ex) => (
+                <li key={ex.id} className="text-brand-text-muted truncate">
+                  {ex.name}
+                </li>
+              ))}
+              {program.exercises.length > 2 && (
+                <li className="text-brand-text-muted/70 italic">...and more</li>
+              )}
+            </ul>
+          </div>
+        )}
+        {totalExercises === 0 && (
+          <p className="text-xs text-brand-text-muted/70 mb-4 italic">
+            No exercises in this program yet.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-auto pt-3 border-t border-brand-border/70 p-4">
+        <Link to={`/programs/${program.id}`} className="block">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full group/button"
+            rightIcon={
+              <EyeIcon className="h-4 w-4 text-brand-primary/80 group-hover/button:text-brand-primary transition-colors" />
+            }
+          >
+            View Details
+          </Button>
+        </Link>
+      </div>
+    </Card>
   );
 };
 

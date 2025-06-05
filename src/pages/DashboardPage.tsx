@@ -39,14 +39,14 @@ const DashboardPage: React.FC = () => {
       className="space-y-8"
     >
       <motion.div variants={itemVariants}>
-        <h1 className="text-3xl font-bold text-light-text dark:text-dark-text">
+        <h1 className="text-3xl font-bold text-brand-text">
           Welcome back,{" "}
-          <span className="text-light-primary dark:text-dark-primary">
+          <span className="text-brand-primary">
             {user?.name?.split(" ")[0]}
           </span>
           !
         </h1>
-        <p className="text-light-secondary dark:text-dark-secondary">
+        <p className="text-brand-muted">
           Here's what's happening with your fitness journey.
         </p>
       </motion.div>

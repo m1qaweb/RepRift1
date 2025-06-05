@@ -1,14 +1,12 @@
-// /src/components/UI/Card.tsx - A simple card component with drop-shadow and hover lift animation.
+// /src/components/UI/Card.tsx
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, MotionProps } from "framer-motion";
 
-interface CardProps {
+interface CardProps extends Omit<MotionProps, "children"> {
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
-  initial?: object;
-  animate?: object;
-  hoverEffect?: boolean; // Added prop to control hover effect
+  hoverEffect?: boolean;
 }
 
 const Card: React.FC<CardProps> = ({
@@ -17,26 +15,27 @@ const Card: React.FC<CardProps> = ({
   onClick,
   initial,
   animate,
+  whileHover,
   hoverEffect = true,
 }) => {
   return (
     <motion.div
-      className={`bg-light-card dark:bg-dark-card shadow-lg rounded-lg p-4 md:p-6 ${
+      className={`bg-brand-card shadow-brand rounded-lg p-4 md:p-6 ${
         className || ""
       } ${onClick ? "cursor-pointer" : ""}`}
       onClick={onClick}
-      initial={initial || { opacity: 0, y: 20 }} // Default initial animation
-      animate={animate || { opacity: 1, y: 0 }} // Default animate state
-      transition={{ duration: 0.3, ease: "easeInOut" }}
+      initial={initial === false ? undefined : initial || { opacity: 0, y: 15 }}
+      animate={animate === false ? undefined : animate || { opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       whileHover={
         hoverEffect && !onClick
-          ? {
-              y: -5,
+          ? whileHover ?? {
+              y: -4,
               boxShadow:
-                "0px 10px 15px -3px rgba(0,0,0,0.1), 0px 4px 6px -2px rgba(0,0,0,0.05)",
+                "0 12px 20px -3px rgb(var(--color-primary-rgb) / 0.1), 0 6px 10px -4px rgb(var(--color-primary-rgb) / 0.08)",
             }
           : {}
-      } // Lift effect
+      }
     >
       {children}
     </motion.div>

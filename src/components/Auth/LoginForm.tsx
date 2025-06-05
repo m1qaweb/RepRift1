@@ -1,115 +1,27 @@
-// /src/components/Auth/LoginForm.tsx – User login form with animated labels.
+// /src/components/Auth/LoginForm.tsx
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useAuth } from "../../contexts/AuthContext";
-import Button from "../UI/Button"; // Your Button component
+import Button from "../UI/Button";
 import { Link } from "react-router-dom";
+import InputField from "./InputField";
+import { AtSymbolIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { validateEmail } from "../../utils/validators";
 
 type Inputs = {
   email: string;
-  pass: string; // Using "pass" as in AuthContext, normally "password"
-};
-
-const FloatingLabelInput: React.FC<{
-  id: string;
-  label: string;
-  type: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  register: any; // from react-hook-form
-  error?: string;
-  isFocused: boolean;
-  value: string;
-  onFocus: () => void;
-  onBlur: () => void;
-}> = ({
-  id,
-  label,
-  type,
-  register: rhfRegister, // Renamed to avoid conflict with local register if any
-  error,
-  isFocused,
-  value,
-  onFocus,
-  onBlur,
-}) => {
-  const labelVariants = {
-    unfocused: {
-      y: value ? -20 : 0,
-      scale: value ? 0.85 : 1,
-      opacity: value ? 1 : 0.7,
-      color: error
-        ? "#EF4444"
-        : value
-        ? "rgb(var(--color-text-primary))"
-        : "rgb(var(--color-text-secondary))",
-    },
-    focused: {
-      y: -20,
-      scale: 0.85,
-      opacity: 1,
-      color: error ? "#EF4444" : "rgb(var(--color-primary))",
-    },
-  };
-  const isFilled = value && value.length > 0;
-
-  return (
-    <div className="relative mb-6">
-      <motion.label
-        htmlFor={id}
-        className="absolute left-3 origin-top-left pointer-events-none"
-        variants={labelVariants}
-        initial={false} // Start from current state based on `isFocused` or `isFilled`
-        animate={isFocused || isFilled ? "focused" : "unfocused"}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        style={{
-          transformOrigin: "0 0",
-          top: "0.75rem",
-        }}
-      >
-        {label}
-      </motion.label>
-      <input
-        id={id}
-        type={type}
-        {...rhfRegister(id)} // Use renamed prop
-        onFocus={onFocus}
-        onBlur={onBlur}
-        className={`w-full px-3 pt-5 pb-2 border rounded-md bg-transparent appearance-none
-                    ${
-                      error
-                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                        : "border-gray-300 dark:border-gray-600 focus:border-light-primary dark:focus:border-dark-primary focus:ring-light-primary dark:focus:ring-dark-primary"
-                    }
-                    text-light-text dark:text-dark-text placeholder-transparent`}
-        placeholder={label}
-      />
-      {error && (
-        <motion.p
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-red-500 text-xs mt-1"
-        >
-          {error}
-        </motion.p>
-      )}
-    </div>
-  );
+  pass: string;
 };
 
 const LoginForm: React.FC = () => {
   const {
-    register, // This is the hook from useForm
+    register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
-  } = useForm<Inputs>();
+  } = useForm<Inputs>({ mode: "onTouched" });
   const { login } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
-
-  const emailValue = watch("email", "");
-  const passwordValue = watch("pass", "");
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setApiError(null);
@@ -126,62 +38,68 @@ const LoginForm: React.FC = () => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-md mx-auto mt-10 p-8 bg-light-card dark:bg-dark-card rounded-xl shadow-2xl"
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="max-w-md mx-auto p-6 sm:p-8
+                 bg-brand-card/80 dark:bg-brand-card/70
+                 backdrop-blur-lg
+                 rounded-2xl
+                 border border-brand-border/30
+                 shadow-xl dark:shadow-[0_10px_30px_-10px_rgb(var(--color-primary-rgb)/0.25)]"
     >
-      <h2 className="text-3xl font-bold text-center mb-8 text-light-text dark:text-dark-text">
-        Login
+      <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10 text-brand-text">
+        Welcome Back
       </h2>
       {apiError && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md"
+          className="mb-3 p-3 bg-error/10 border border-error/30 text-error rounded-md"
           role="alert"
         >
           {apiError}
         </motion.div>
       )}
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <FloatingLabelInput
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-2">
+        <InputField
           id="email"
-          label="Email"
+          label="Email Address"
           type="email"
-          register={register} // Pass the register function from useForm
+          autoComplete="email"
+          leadingIcon={<AtSymbolIcon />}
+          register={register("email", {
+            required: "Email is required",
+            validate: validateEmail,
+          })}
           error={errors.email?.message}
-          isFocused={focusedField === "email"}
-          value={emailValue}
-          onFocus={() => setFocusedField("email")}
-          onBlur={() => setFocusedField(null)}
         />
-
-        <FloatingLabelInput
+        <InputField
           id="pass"
           label="Password"
           type="password"
-          register={register} // Pass the register function from useForm
+          autoComplete="current-password"
+          leadingIcon={<LockClosedIcon />}
+          register={register("pass", { required: "Password is required" })}
           error={errors.pass?.message}
-          isFocused={focusedField === "pass"}
-          value={passwordValue}
-          onFocus={() => setFocusedField("pass")}
-          onBlur={() => setFocusedField(null)}
         />
-
-        <Button
-          type="submit"
-          variant="primary"
-          className="w-full mt-4"
-          isLoading={isSubmitting}
-        >
-          Login
-        </Button>
+        <div className="pt-5">
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full"
+            isLoading={isSubmitting}
+            size="lg"
+          >
+            Login
+          </Button>
+        </div>
       </form>
-      <p className="mt-6 text-center text-sm text-light-secondary dark:text-dark-secondary">
+      <p className="mt-10 text-center text-sm text-brand-text-muted">
         Don't have an account?{" "}
         <Link
           to="/signup"
-          className="font-medium text-light-primary dark:text-dark-primary hover:underline"
+          className="font-medium text-brand-primary hover:text-brand-primary/80 hover:underline"
         >
           Sign up
         </Link>

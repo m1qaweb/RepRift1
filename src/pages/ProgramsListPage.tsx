@@ -1,10 +1,10 @@
-// /src/pages/ProgramsListPage.tsx – Lists all available workout programs.
+// /src/pages/ProgramsListPage.tsx
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Program, fetchPrograms } from "../utils/fakeApi";
 import ProgramCard from "../components/Programs/ProgramCard";
 import Button from "../components/UI/Button";
-import ProgramEditorForm from "../components/Programs/ProgramEditorForm"; // For creating/editing
+import ProgramEditorForm from "../components/Programs/ProgramEditorForm";
 import Modal from "../components/UI/Modal";
 import { PlusCircleIcon } from "@heroicons/react/24/solid";
 import Spinner from "../components/UI/Spinner";
@@ -42,97 +42,128 @@ const ProgramsListPage: React.FC = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setEditingProgram(null); // Clear editing state
+    setEditingProgram(null);
   };
 
   const handleSaveProgram = (savedProgram: Program) => {
-    // Update local state to reflect changes without immediate re-fetch
-    // This helps make the UI feel faster
     if (editingProgram) {
-      // It was an edit
       setPrograms((prev) =>
         prev.map((p) => (p.id === savedProgram.id ? savedProgram : p))
       );
     } else {
-      // It was a new program
-      setPrograms((prev) => [...prev, savedProgram]);
+      setPrograms((prev) => [savedProgram, ...prev]); // Add new to the start
     }
-    // Optionally re-fetch all to ensure consistency: loadPrograms();
     handleCloseModal();
   };
 
-  const containerVariants = {
+  // Variants for the grid of program cards
+  const programsGridVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1, // Stagger animation for each card
+        staggerChildren: 0.08, // Adjusted stagger timing
       },
+    },
+  };
+
+  // Variants for page content wrapper if needed for entrance animation
+  const contentWrapperVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, ease: "easeOut" },
     },
   };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Spinner size="lg" />
+      // This loading state takes up significant vertical space matching typical page content height
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] py-10 text-brand-text">
+        <Spinner size="lg" className="mb-3" />
+        <p>Loading your programs...</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-light-text dark:text-dark-text">
-          Your Workout Programs
-        </h1>
-        <Button
-          variant="primary"
-          onClick={handleOpenModalForNew}
-          leftIcon={<PlusCircleIcon className="h-5 w-5" />}
-        >
-          Create Program
-        </Button>
-      </div>
-
-      <AnimatePresence>
-        {programs.length > 0 ? (
-          <motion.div
-            // For Masonry, you might need a library like 'masonic' or custom CSS grid setup for true masonry.
-            // Tailwind CSS Grid with varying col-spans or a fixed number of columns can approximate it.
-            // This example uses a simple responsive grid.
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
+    // This outermost div is just for overall page structure / page-level animations.
+    // Padding like `py-6 sm:py-8` ensures space from Navbar/Footer if App.tsx doesn't provide it.
+    <motion.div
+      className="py-6 sm:py-8"
+      initial="initial"
+      animate="animate"
+      variants={contentWrapperVariants} // Animate the whole page content in
+    >
+      {/* --- Main Content Wrapper - THIS GETS THE "BRIGHTER" BACKGROUND --- */}
+      <div className="bg-brand-card rounded-xl shadow-xl p-4 sm:p-6 lg:p-8">
+        {/* Header section: Title and Create Button */}
+        <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-brand-text mb-4 sm:mb-0">
+            Your Workout Programs
+          </h1>
+          <Button
+            variant="primary" // Ensure this button style is distinct and visible
+            onClick={handleOpenModalForNew}
+            leftIcon={<PlusCircleIcon className="h-5 w-5" />}
+            size="md"
           >
-            {programs.map((program) => (
-              // The ProgramCard should define its own `initial` and `animate` for the "fade-in as items mount"
-              // or have variants passed to it. Parent `staggerChildren` controls timing.
-              <ProgramCard
-                key={program.id}
-                program={program}
-                onEditClick={handleOpenModalForEdit}
-              />
-            ))}
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-10 text-light-secondary dark:text-dark-secondary"
-          >
-            <p className="mb-2 text-lg">No programs found.</p>
-            <p>Get started by creating your first workout program!</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            Create Program
+          </Button>
+        </header>
 
-      {isModalOpen && ( // Modal presence handled by its own AnimatePresence usually
+        {/* Program Cards Grid or Empty State */}
+        <AnimatePresence mode="wait">
+          {programs.length > 0 ? (
+            <motion.div
+              key="programs-grid" // Key for AnimatePresence
+              variants={programsGridVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0 }} // Basic exit for the grid
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-5 sm:gap-6" // Consistent gap
+            >
+              {programs.map((program) => (
+                <ProgramCard // ProgramCard has its own theming and internal <Card>
+                  key={program.id}
+                  program={program}
+                  onEditClick={handleOpenModalForEdit}
+                />
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="no-programs" // Key for AnimatePresence
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }} // Delay if grid was exiting
+              exit={{ opacity: 0, y: -10 }}
+              className="text-center py-12 sm:py-16" // More padding for empty state
+            >
+              <PlusCircleIcon className="h-16 w-16 sm:h-20 sm:w-20 mx-auto text-brand-primary/30 mb-5" />
+              <h2 className="text-xl font-semibold text-brand-text mb-2">
+                No Workout Programs Found
+              </h2>
+              <p className="text-sm text-brand-text-muted max-w-sm mx-auto mb-6">
+                It looks like you haven't created any programs yet. Get started
+                by clicking the button above!
+              </p>
+              {/* Optionally, a button here too, but the one in header is primary */}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>{" "}
+      {/* End of Main Content Wrapper with bg-brand-card */}
+      {/* Modal for ProgramEditorForm (ensure Modal styling allows it to pop) */}
+      {isModalOpen && (
         <Modal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          title={editingProgram ? "Edit Program" : "Create New Program"}
-          size="xl"
+          title={editingProgram ? "Edit Program" : "Create New Workout Program"}
+          size="4xl" // Keep large size for the form
+          hideDefaultFooter // Form provides its own footer/actions
+          panelClassName="dark:bg-[rgb(var(--color-card-rgb)/0.95)] backdrop-blur-lg" // Slightly more opaque modal
+          preventCloseOnBackdropClick={true} // To prevent accidental close for complex form
         >
           <ProgramEditorForm
             program={editingProgram}
@@ -141,7 +172,7 @@ const ProgramsListPage: React.FC = () => {
           />
         </Modal>
       )}
-    </div>
+    </motion.div>
   );
 };
 

@@ -190,7 +190,7 @@ const HistoryPage: React.FC = () => {
               (dayName) => (
                 <div
                   key={dayName}
-                  className="text-center font-medium text-xs sm:text-sm text-light-secondary dark:text-dark-secondary py-2"
+                  className="text-center font-medium text-xs sm:text-sm text-brand-muted py-2"
                 >
                   {dayName}
                 </div>
@@ -222,9 +222,7 @@ const HistoryPage: React.FC = () => {
               >
                 <span
                   className={`text-xs sm:text-sm ${
-                    day.isCurrentMonth
-                      ? "text-light-text dark:text-dark-text"
-                      : ""
+                    day.isCurrentMonth ? "text-brand-text" : ""
                   }`}
                 >
                   {format(day.date, "d")}
@@ -256,7 +254,7 @@ const HistoryPage: React.FC = () => {
           )} - ${selectedLog.programTitle}`}
         >
           {/* ... modal content as before ... */}
-          <div className="text-sm text-light-text dark:text-dark-text">
+          <div className="text-sm text-brand-text">
             {selectedLog.durationMinutes && (
               <p>
                 <strong>Duration:</strong> {selectedLog.durationMinutes} minutes

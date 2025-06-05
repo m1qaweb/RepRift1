@@ -1,4 +1,4 @@
-// /src/components/Analytics/ProgressChart.tsx – Displays progress with an animated chart.
+// /src/components/Analytics/ProgressChart.tsx
 import React from "react";
 import { motion } from "framer-motion";
 import {
@@ -12,22 +12,19 @@ import {
   Legend,
 } from "recharts";
 
-// Define a generic data structure that the chart expects for internal processing
 interface TransformedChartData {
-  date: string; // Formatted date for X-axis
-  value: number | undefined | null; // The value for Y-axis
+  date: string;
+  value: number | undefined | null;
 }
 
-// Generic Props for the ProgressChart component
-// TData is the type of the original data items passed in.
-// It must have a 'date' property (string) and the property specified by dataKey.
 interface ProgressChartProps<
   TData extends { date: string; [key: string]: any }
 > {
   data: TData[];
-  dataKey: keyof TData & string; // Ensure dataKey is also a string for easy use in name generation
+  dataKey: keyof TData & string;
   title?: string;
-  yAxisLabel?: string; // Optional label for the Y-axis
+  yAxisLabel?: string;
+  lineColorVar?: string;
 }
 
 const ProgressChart = <TData extends { date: string; [key: string]: any }>({
@@ -35,57 +32,64 @@ const ProgressChart = <TData extends { date: string; [key: string]: any }>({
   dataKey,
   title,
   yAxisLabel,
+  lineColorVar = "--color-primary",
 }: ProgressChartProps<TData>) => {
   if (!data || data.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="p-4 text-center text-light-secondary dark:text-dark-secondary"
+        className="p-4 text-center text-brand-text-muted"
       >
         No data available for {title || "chart"}.
       </motion.div>
     );
   }
 
-  // Transform original data to the structure Recharts LineChart will use internally ('date' and 'value')
   const transformedChartData: TransformedChartData[] = data.map((item) => ({
     date: new Date(item.date).toLocaleDateString("en-US", {
-      // Ensure item.date is a valid date string or timestamp
       month: "short",
       day: "numeric",
     }),
-    value: item[dataKey] as number, // Assuming the value at dataKey is numeric
+    value:
+      typeof item[dataKey] === "number" ? (item[dataKey] as number) : undefined,
   }));
 
-  // Generate a readable name for the Line based on the dataKey
   const lineName = dataKey
     .toString()
-    .replace(/([A-Z])/g, " $1") // Add space before uppercase letters
-    .replace(/^./, (str) => str.toUpperCase()); // Capitalize first letter
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (str) => str.toUpperCase());
+
+  const axisStrokeColor = "currentColor";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="p-4 bg-light-card dark:bg-dark-card rounded-lg shadow"
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="p-4 bg-brand-card rounded-lg shadow-lg"
     >
       {title && (
-        <h3 className="text-lg font-semibold mb-4 text-light-text dark:text-dark-text">
-          {title}
-        </h3>
+        <h3 className="text-lg font-semibold mb-4 text-brand-text">{title}</h3>
       )}
       <ResponsiveContainer width="100%" height={300}>
         <LineChart
-          data={transformedChartData} // Use the transformed data
-          margin={{ top: 5, right: 30, left: yAxisLabel ? 5 : -15, bottom: 5 }} // Adjust left margin for yAxisLabel
+          data={transformedChartData}
+          margin={{ top: 5, right: 20, left: yAxisLabel ? 0 : -20, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} />
-          <XAxis dataKey="date" stroke="currentColor" fontSize={12} />
+          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
+          <XAxis
+            dataKey="date"
+            stroke={axisStrokeColor}
+            fontSize={11}
+            tickLine={false}
+            axisLine={{ stroke: "rgb(var(--color-border-rgb) / 0.7)" }}
+          />
           <YAxis
-            stroke="currentColor"
-            fontSize={12}
+            stroke={axisStrokeColor}
+            fontSize={11}
+            tickLine={false}
+            axisLine={{ stroke: "rgb(var(--color-border-rgb) / 0.7)" }}
             label={
               yAxisLabel
                 ? {
@@ -93,43 +97,47 @@ const ProgressChart = <TData extends { date: string; [key: string]: any }>({
                     angle: -90,
                     position: "insideLeft",
                     dy: 70,
+                    offset: -5,
                     style: {
                       textAnchor: "middle",
-                      fill: "currentColor",
-                      fontSize: "10px",
+                      fill: "rgb(var(--color-text-muted-rgb))",
+                      fontSize: "12px",
+                      fontWeight: 500,
                     },
                   }
                 : undefined
             }
-            // domain={['auto', 'auto']} // Recharts default is usually fine
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "rgba(31, 41, 55, 0.8)",
-              borderColor: "rgba(75, 85, 99, 1)",
-              borderRadius: "0.375rem",
+            cursor={{
+              stroke: "rgb(var(--color-primary-rgb) / 0.3)",
+              strokeWidth: 1,
             }}
-            labelStyle={{
-              color: "#f9fafb",
-              marginBottom: "4px",
-              fontWeight: "600",
-            }}
-            itemStyle={{ color: "#f9fafb" }}
           />
-          <Legend wrapperStyle={{ fontSize: "12px" }} />
-          <motion.g // Group for line animation
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
+          <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
+          <motion.g
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 1.5, ease: "easeInOut", delay: 0.2 }}
           >
             <Line
               type="monotone"
-              dataKey="value" // The Line component now always uses the 'value' field from transformedChartData
+              dataKey="value"
               name={lineName}
-              stroke="var(--color-primary, #3B82F6)"
-              strokeWidth={2}
-              dot={{ r: 4, fill: "var(--color-primary, #3B82F6)" }}
-              activeDot={{ r: 6, strokeWidth: 0 }} // Make activeDot simpler or style via className
+              stroke={`var(${lineColorVar})`}
+              strokeWidth={2.5}
+              dot={{
+                r: 4,
+                fill: `var(${lineColorVar})`,
+                stroke: "rgb(var(--color-card-rgb))",
+                strokeWidth: 1.5,
+              }}
+              activeDot={{
+                r: 6,
+                fill: `var(${lineColorVar})`,
+                stroke: "rgb(var(--color-card-rgb))",
+                strokeWidth: 2,
+              }}
             />
           </motion.g>
         </LineChart>

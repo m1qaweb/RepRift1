@@ -1,4 +1,4 @@
-// /src/pages/SettingsPage.tsx – Page for app settings like theme, password change.
+// /src/pages/SettingsPage.tsx
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useTheme } from "../contexts/ThemeContext";
@@ -24,16 +24,15 @@ const SettingsPage: React.FC = () => {
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
-  // Motion variants for input focus
   const inputFocusVariants = {
     focus: {
-      borderColor: "var(--color-primary, #3B82F6)",
-      boxShadow: "0 0 0 3px rgba(var(--color-primary-rgb), 0.3)", // Ensure --color-primary-rgb is defined
+      borderColor: "rgb(var(--color-primary))",
+      boxShadow: "0 0 0 2px rgb(var(--color-primary-rgb) / 0.4)",
       transition: { duration: 0.2 },
     },
     blur: {
-      borderColor: "var(--color-border, #E5E7EB)", // Assuming --color-border from your theme
-      boxShadow: "0 0 0 0px rgba(var(--color-primary-rgb), 0)",
+      borderColor: "rgb(var(--color-border))",
+      boxShadow: "0 0 0 0px rgb(var(--color-primary-rgb) / 0)",
       transition: { duration: 0.2 },
     },
   };
@@ -48,22 +47,18 @@ const SettingsPage: React.FC = () => {
       return;
     }
     if (newPassword.length < 8) {
-      // Basic validation
       setPasswordError("New password must be at least 8 characters long.");
       return;
     }
 
     setIsChangingPassword(true);
-    // Simulate API call
     try {
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      // On success:
       setPasswordSuccess("Password changed successfully!");
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
-      // On failure:
       setPasswordError(
         "Failed to change password. Please check your old password."
       );
@@ -72,58 +67,70 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const PasswordInput: React.FC<{
+  interface PasswordInputProps {
     id: string;
     value: string;
     onChange: (val: string) => void;
     label: string;
     show: boolean;
     toggleShow: () => void;
-    error?: string | null;
-  }> = ({ id, value, onChange, label, show, toggleShow, error }) => (
-    <div className="mb-4">
-      <label
-        htmlFor={id}
-        className="block text-sm font-medium text-light-secondary dark:text-dark-secondary mb-1"
-      >
-        {label}
-      </label>
-      <motion.div
-        className="relative"
-        whileFocus="focus"
-        initial="blur"
-        variants={inputFocusVariants}
-      >
-        <LockClosedIcon className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-        <input
-          type={show ? "text" : "password"}
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required
-          className={`w-full px-3 py-2 pl-10 border rounded-md bg-transparent 
-                        focus:outline-none focus-visible:ring-0  /* ring handled by motion */
-                        ${
-                          error
-                            ? "border-red-500"
-                            : "border-gray-300 dark:border-gray-600"
-                        }`}
-        />
-        <button
-          type="button"
-          onClick={toggleShow}
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+  }
+
+  const PasswordInput: React.FC<PasswordInputProps> = ({
+    id,
+    value,
+    onChange,
+    label,
+    show,
+    toggleShow,
+  }) => {
+    const hasError =
+      (id === "confirmPassword" &&
+        passwordError === "New passwords do not match.") ||
+      (id === "newPassword" &&
+        passwordError === "New password must be at least 8 characters long.");
+
+    return (
+      <div>
+        {" "}
+        <label
+          htmlFor={id}
+          className="block text-sm font-medium text-brand-text-muted mb-1"
         >
-          {show ? (
-            <EyeSlashIcon className="w-5 h-5" />
-          ) : (
-            <EyeIcon className="w-5 h-5" />
-          )}
-        </button>
-      </motion.div>
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-    </div>
-  );
+          {label}
+        </label>
+        <motion.div
+          className="relative"
+          whileFocus="focus"
+          initial="blur"
+          variants={inputFocusVariants}
+        >
+          <LockClosedIcon className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-text-muted" />
+          <input
+            type={show ? "text" : "password"}
+            id={id}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            required
+            className={`w-full px-3 py-2 pl-10 border rounded-md bg-transparent text-brand-text
+                          focus:outline-none focus-visible:ring-0 
+                          ${hasError ? "border-error" : "border-brand-border"}`}
+          />
+          <button
+            type="button"
+            onClick={toggleShow}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-brand-text-muted hover:text-brand-text"
+          >
+            {show ? (
+              <EyeSlashIcon className="w-5 h-5" />
+            ) : (
+              <EyeIcon className="w-5 h-5" />
+            )}
+          </button>
+        </motion.div>
+      </div>
+    );
+  };
 
   return (
     <motion.div
@@ -131,49 +138,43 @@ const SettingsPage: React.FC = () => {
       animate={{ opacity: 1, y: 0 }}
       className="max-w-2xl mx-auto space-y-8"
     >
-      <h1 className="text-3xl font-bold text-light-text dark:text-dark-text">
-        Settings
-      </h1>
+      <h1 className="text-3xl font-bold text-brand-text">Settings</h1>
 
-      {/* Theme Settings Card */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4 text-light-text dark:text-dark-text">
+        <h2 className="text-xl font-semibold mb-4 text-brand-text">
           Appearance
         </h2>
         <div className="flex items-center justify-between">
-          <p className="text-light-secondary dark:text-dark-secondary">Theme</p>
+          <p className="text-brand-text-muted">Theme</p>
           <motion.div
-            className="relative w-16 h-8 flex items-center rounded-full p-1 cursor-pointer bg-gray-200 dark:bg-gray-700"
+            className="relative w-16 h-8 flex items-center rounded-full p-1 cursor-pointer bg-brand-border"
             onClick={toggleTheme}
-            animate={{
-              backgroundColor:
-                theme === "dark" ? "rgb(55 65 81)" : "rgb(229 231 235)",
-            }} // Animate background color transition
-            transition={{ duration: 0.3 }}
           >
             <motion.div
-              className="w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center"
-              layout // Enables smooth transition of the handle
+              className="w-6 h-6 bg-brand-card shadow-md flex items-center justify-center rounded-full"
+              layout
               transition={{ type: "spring", stiffness: 700, damping: 30 }}
-              style={{ x: theme === "dark" ? "100%" : "0%" }} // Position handle based on theme
+              style={{ x: theme === "dark" ? "calc(100% - 2px)" : "2px" }}
             >
               {theme === "dark" ? (
-                <MoonIcon className="h-4 w-4 text-slate-700" />
+                <MoonIcon className="h-4 w-4 text-brand-text" />
               ) : (
-                <SunIcon className="h-4 w-4 text-yellow-500" />
+                <SunIcon className="h-4 w-4 text-brand-text" />
               )}
             </motion.div>
           </motion.div>
         </div>
-        <p className="text-xs text-light-secondary dark:text-dark-secondary mt-2">
+        <p className="text-xs text-brand-text-muted mt-2">
+          {" "}
           Currently using:{" "}
-          <span className="font-semibold capitalize">{theme} mode</span>
+          <span className="font-semibold capitalize text-brand-text">
+            {theme} mode
+          </span>{" "}
         </p>
       </Card>
 
-      {/* Password Change Card */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4 text-light-text dark:text-dark-text">
+        <h2 className="text-xl font-semibold mb-4 text-brand-text">
           Change Password
         </h2>
         <form onSubmit={handleChangePassword} className="space-y-4">
@@ -185,6 +186,7 @@ const SettingsPage: React.FC = () => {
             show={showOldPass}
             toggleShow={() => setShowOldPass(!showOldPass)}
           />
+
           <PasswordInput
             id="newPassword"
             label="New Password"
@@ -193,6 +195,12 @@ const SettingsPage: React.FC = () => {
             show={showNewPass}
             toggleShow={() => setShowNewPass(!showNewPass)}
           />
+          {passwordError &&
+            (passwordError.includes("New password must be") ||
+              passwordError.includes("New passwords do not match")) && (
+              <p className="text-xs text-error -mt-2 mb-2">{passwordError}</p>
+            )}
+
           <PasswordInput
             id="confirmPassword"
             label="Confirm New Password"
@@ -200,16 +208,24 @@ const SettingsPage: React.FC = () => {
             onChange={setConfirmPassword}
             show={showConfirmPass}
             toggleShow={() => setShowConfirmPass(!showConfirmPass)}
-            error={passwordError}
           />
+          {passwordError &&
+            passwordError.includes("New passwords do not match") && (
+              <p className="text-xs text-error -mt-2 mb-2">{passwordError}</p>
+            )}
+
+          {passwordError &&
+            !(
+              passwordError.includes("New password must be") ||
+              passwordError.includes("New passwords do not match")
+            ) && <p className="text-xs text-error mt-1">{passwordError}</p>}
 
           {passwordSuccess && (
-            <p className="text-sm text-green-600 dark:text-green-400">
-              {passwordSuccess}
-            </p>
+            <p className="text-sm text-success"> {passwordSuccess}</p>
           )}
 
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-2">
+            {" "}
             <Button
               type="submit"
               variant="primary"
@@ -221,12 +237,8 @@ const SettingsPage: React.FC = () => {
           </div>
         </form>
       </Card>
-
-      {/* Add more settings sections as needed (e.g., Notifications, Data Export) */}
     </motion.div>
   );
 };
-// CSS Vars for this page:
-// --color-primary (used by input focus), --color-border (input blur), --color-primary-rgb
 
 export default SettingsPage;
