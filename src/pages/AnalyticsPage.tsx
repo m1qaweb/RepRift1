@@ -1,266 +1,296 @@
-// /src/pages/AnalyticsPage.tsx
-import React, { useEffect, useState, useMemo } from "react";
+// /src/pages/AnalyticsPage.tsx (Corrected Version)
+import React, { useEffect, useState, useMemo, useCallback } from "react"; // <<< FIX: Import useCallback
 import { motion } from "framer-motion";
-import ProgressChart from "../components/Analytics/ProgressChart"; // Assuming ProgressChart handles its own theming or uses generic styles
-import StatsCard from "../components/Analytics/StatsCard"; // Assuming StatsCard handles its own theming or uses generic styles
+import { useAuth } from "../contexts/AuthContext";
 import {
   BodyMetric,
   WorkoutLog,
   fetchBodyMetrics,
   fetchWorkoutLogs,
-} from "../utils/fakeApi"; // Assuming fakeApi.ts exists and exports these
+} from "../utils/API"; // Corrected from ../utils/API
+import { formatDate } from "../utils/dateUtils";
+
+import ProgressChart from "../components/Analytics/ProgressChart";
+import StatsCard from "../components/Analytics/StatsCard";
 import Spinner from "../components/UI/Spinner";
+import Card from "../components/UI/Card";
 import {
   ChartBarIcon,
   BoltIcon,
   ClockIcon,
-  ExclamationTriangleIcon, // For error display
+  FireIcon,
+  ArrowTrendingUpIcon,
+  TrophyIcon,
+  ArrowPathIcon,
+  ScaleIcon,
 } from "@heroicons/react/24/outline";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
+
+// calculateBMI helper function (no changes needed)
+const calculateBMI = (w?: number, h?: number) =>
+  w && h && h > 0 ? parseFloat((w / (h / 100) ** 2).toFixed(1)) : undefined;
 
 const AnalyticsPage: React.FC = () => {
-  const [bodyMetrics, setBodyMetrics] = useState<BodyMetric[]>([]);
-  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
+  const { user } = useAuth();
+  const [data, setData] = useState<{
+    metrics: BodyMetric[];
+    logs: WorkoutLog[];
+  }>({ metrics: [], logs: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [metricsData, logsData] = await Promise.all([
-          fetchBodyMetrics(),
-          fetchWorkoutLogs(),
-        ]);
-        setBodyMetrics(metricsData);
-        setWorkoutLogs(logsData);
-      } catch (err) {
-        console.error("Failed to fetch analytics data:", err);
-        setError("Could not load analytics data. Please try again later.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  const totalWorkoutsThisMonth = useMemo(() => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-    return workoutLogs.filter((log) => {
-      const logDate = new Date(log.date);
-      return (
-        logDate.getMonth() === currentMonth &&
-        logDate.getFullYear() === currentYear
+  // <<< FIX #1: Wrap the data loading logic in useCallback
+  const loadData = useCallback(async () => {
+    if (!user) return; // The dependency 'user' is now declared below
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Now fetching from the persistent API
+      const [metricsData, logsData] = await Promise.all([
+        fetchBodyMetrics(user.id),
+        fetchWorkoutLogs({ userId: user.id }),
+      ]);
+      const sortedMetrics = metricsData.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
       );
-    }).length;
-  }, [workoutLogs]);
+      const sortedLogs = logsData.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      setData({ metrics: sortedMetrics, logs: sortedLogs });
+    } catch (err) {
+      console.error("Failed to fetch analytics data:", err);
+      setError("Could not load analytics data.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]); // <<< This useCallback depends on 'user'
 
-  const avgDuration = useMemo(() => {
-    if (workoutLogs.length === 0) return 0;
-    const totalDuration = workoutLogs.reduce(
-      (sum, log) => sum + (log.durationMinutes || 0),
-      0
+  useEffect(() => {
+    loadData();
+    // <<< FIX #2: Add the stable `loadData` function to the dependency array.
+    // The ESLint warning is now resolved correctly.
+  }, [loadData]);
+
+  // --- DERIVED STATISTICS ---
+
+  const { recentStats, allTimeStats, bodyTrends } = useMemo(() => {
+    const { metrics, logs } = data;
+    const last30Days = new Date();
+    last30Days.setDate(last30Days.getDate() - 30);
+    const recentLogs = logs.filter((log) => new Date(log.date) >= last30Days);
+
+    const workoutsThisMonth = recentLogs.length;
+    const totalDuration = recentLogs.reduce((s, l) => s + l.durationMinutes, 0);
+    const totalCalories = recentLogs.reduce((s, l) => s + l.caloriesBurned, 0);
+
+    const allTimeWorkouts = logs.length;
+    const allTimeDurationHours = Math.round(
+      logs.reduce((s, l) => s + l.durationMinutes, 0) / 60
     );
-    // Using Math.round for cleaner integer calculation before potentially passing to StatsCard
-    return Math.round(totalDuration / workoutLogs.length);
-  }, [workoutLogs]);
 
-  const maxCalories = useMemo(() => {
-    if (workoutLogs.length === 0) return 0;
-    return Math.max(0, ...workoutLogs.map((log) => log.caloriesBurned || 0)); // Ensure Math.max doesn't return -Infinity for empty or all-zero array
-  }, [workoutLogs]);
+    const weightChange =
+      metrics.length < 2
+        ? 0
+        : parseFloat(
+            (
+              metrics[metrics.length - 1].weightKg - metrics[0].weightKg
+            ).toFixed(1)
+          );
+    const latestWeight =
+      metrics.length > 0 ? metrics[metrics.length - 1].weightKg : "N/A";
 
-  // Memoized and sorted data for the workout duration chart
-  const durationChartData = useMemo(() => {
-    return workoutLogs
-      .map((log) => ({
-        date: log.date, // ProgressChart should be capable of parsing string dates or use a date utility
-        durationMinutes: log.durationMinutes || 0,
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [workoutLogs]);
+    return {
+      recentStats: {
+        workoutsThisMonth,
+        avgDuration:
+          workoutsThisMonth > 0
+            ? Math.round(totalDuration / workoutsThisMonth)
+            : 0,
+        avgCalories:
+          workoutsThisMonth > 0
+            ? Math.round(totalCalories / workoutsThisMonth)
+            : 0,
+      },
+      allTimeStats: { allTimeWorkouts, allTimeDurationHours, latestWeight },
+      bodyTrends: { weightChange },
+    };
+  }, [data]);
 
-  const sectionVariant = {
-    hidden: { opacity: 0, y: 20 }, // Slightly reduced y for a smoother feel
-    visible: (i: number = 0) => ({
+  const chartData = useMemo(() => {
+    return data.metrics.map((m) => ({
+      date: formatDate(m.date, "MMM d"),
+      Weight: m.weightKg,
+      BMI: m.bmi ?? calculateBMI(m.weightKg, user?.heightCm),
+    }));
+  }, [data.metrics, user?.heightCm]);
+
+  // Animation Variants (no changes)
+  const containerVariant = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.1 } },
+  };
+  const itemVariant = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        delay: i * 0.1, // Slightly reduced delay
-        duration: 0.4, // Slightly faster duration
-        ease: "easeOut",
-      },
-    }),
+      transition: { type: "spring", stiffness: 100 },
+    },
   };
 
-  if (isLoading) {
+  // RENDER LOGIC
+  if (isLoading)
     return (
-      <div className="flex flex-col justify-center items-center h-screen text-brand-text-muted">
+      <div className="flex justify-center items-center h-96">
         <Spinner size="lg" />
-        <p className="mt-4">Loading analytics...</p>
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col justify-center items-center h-screen text-center p-4"
-      >
-        <ExclamationTriangleIcon className="w-16 h-16 text-error mb-4" />
-        <h2 className="text-2xl font-semibold text-brand-text mb-2">
-          Oops! Something went wrong.
-        </h2>
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <ExclamationTriangleIcon className="w-12 h-12 text-error mb-4" />
+        <h2 className="text-2xl font-semibold">Error Loading Data</h2>
         <p className="text-brand-text-muted">{error}</p>
-      </motion.div>
+      </div>
     );
-  }
 
   return (
-    <div className="space-y-10 p-4 md:p-6">
-      {" "}
-      {/* Added padding for smaller screens */}
+    <motion.div
+      className="space-y-8"
+      variants={containerVariant}
+      initial="hidden"
+      animate="visible"
+    >
       <motion.div
-        custom={0}
-        variants={sectionVariant}
-        initial="hidden"
-        animate="visible"
-        className="mb-8" // Add some margin bottom
+        variants={itemVariant}
+        className="flex justify-between items-center"
       >
-        <h1 className="text-3xl md:text-4xl font-bold text-brand-text mb-2">
-          Your Fitness Analytics
-        </h1>
-        <p className="text-lg text-brand-text-muted">
-          Track your progress and see how far you've come.
-        </p>
-      </motion.div>
-      <motion.div
-        custom={1}
-        variants={sectionVariant}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        <StatsCard
-          title="Workouts This Month"
-          value={totalWorkoutsThisMonth}
-          icon={<ChartBarIcon className="w-7 h-7" />} // Slightly larger icons
-          unit="workouts"
-        />
-        <StatsCard
-          title="Avg. Workout Duration"
-          value={avgDuration}
-          icon={<ClockIcon className="w-7 h-7" />}
-          unit="min"
-        />
-        <StatsCard
-          title="Max Calories Burned"
-          value={maxCalories}
-          icon={<BoltIcon className="w-7 h-7" />}
-          unit="kcal"
-        />
-      </motion.div>
-      <motion.div
-        custom={2}
-        variants={sectionVariant}
-        initial="hidden"
-        animate="visible"
-        className="space-y-8" // Increased spacing for better section separation
-      >
-        <h2 className="text-2xl md:text-3xl font-semibold text-brand-text">
-          Progress Over Time
-        </h2>
-
-        {/* Weight Trend Chart */}
-        <motion.div
-          custom={2.1}
-          variants={sectionVariant}
-          initial="hidden"
-          animate="visible"
-          className="bg-brand-card p-4 sm:p-6 rounded-lg shadow-brand-card-light dark:shadow-brand-card-glow"
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-brand-text">
+            Your Analytics
+          </h1>
+          <p className="text-lg text-brand-text-muted">
+            An overview of your fitness journey.
+          </p>
+        </div>
+        <button
+          onClick={() => loadData()}
+          className="p-2 text-brand-text-muted hover:text-brand-primary hover:bg-brand-secondary/20 rounded-full transition-colors"
         >
-          {bodyMetrics.length > 0 ? (
-            <ProgressChart
-              data={bodyMetrics}
-              dataKey="weightKg"
-              title="Weight Trend (kg)"
-              yAxisLabel="Weight (kg)"
-              // The ProgressChart component itself will use themed text colors or accept them as props
-            />
-          ) : (
-            <p className="text-brand-text-muted text-center py-8">
-              No weight data to display. Add some weigh-ins to see your trend!
-            </p>
-          )}
-        </motion.div>
-
-        {/* BMI Trend Chart */}
-        {/* Conditionally render this section only if there's BMI data */}
-        {bodyMetrics.some((m) => m.bmi != null && m.bmi > 0) ? (
-          <motion.div
-            custom={2.2}
-            variants={sectionVariant}
-            initial="hidden"
-            animate="visible"
-            className="bg-brand-card p-4 sm:p-6 rounded-lg shadow-brand-card-light dark:shadow-brand-card-glow"
-          >
-            <ProgressChart
-              // Filter for entries that specifically have BMI.
-              data={bodyMetrics.filter((m) => m.bmi != null && m.bmi > 0)}
-              dataKey="bmi"
-              title="BMI Trend"
-              yAxisLabel="BMI"
-            />
-          </motion.div>
-        ) : (
-          // Only show this "No BMI" message if there was some body metric data but no BMI.
-          bodyMetrics.length > 0 && (
-            <motion.div
-              custom={2.2}
-              variants={sectionVariant}
-              initial="hidden"
-              animate="visible"
-              className="bg-brand-card p-4 sm:p-6 rounded-lg shadow-brand-card-light dark:shadow-brand-card-glow"
-            >
-              <p className="text-brand-text-muted text-center py-8">
-                No BMI data available to display.
-              </p>
-            </motion.div>
-          )
-        )}
-
-        {/* Workout Duration Chart */}
-        <motion.div
-          custom={2.3}
-          variants={sectionVariant}
-          initial="hidden"
-          animate="visible"
-          className="bg-brand-card p-4 sm:p-6 rounded-lg shadow-brand-card-light dark:shadow-brand-card-glow"
-        >
-          {/* Changed threshold to > 0 logs to show chart if even one log exists, adjusted message otherwise. 
-                Or keep > 1 if a "trend" implies multiple points. Let's assume trend needs at least 2 points. */}
-          {durationChartData.length > 1 ? (
-            <ProgressChart
-              data={durationChartData}
-              dataKey="durationMinutes"
-              title="Workout Duration Over Time"
-              yAxisLabel="Duration (min)"
-            />
-          ) : (
-            <p className="text-brand-text-muted text-center py-8">
-              {workoutLogs.length <= 1
-                ? "Log more workouts to see your duration trend."
-                : "Not enough data points for duration trend."}
-            </p>
-          )}
-        </motion.div>
+          <ArrowPathIcon className="h-5 w-5" />
+        </button>
       </motion.div>
-    </div>
+
+      {data.logs.length === 0 && data.metrics.length === 0 ? (
+        <motion.div
+          variants={itemVariant}
+          className="flex flex-col items-center justify-center h-96 text-center"
+        >
+          <ChartBarIcon className="w-16 h-16 text-brand-primary/20 mb-4" />
+          <h2 className="text-2xl font-semibold text-brand-text mb-2">
+            Your Analytics Dashboard Awaits
+          </h2>
+          <p className="text-brand-text-muted max-w-md">
+            Log a workout or add a body weight measurement to start tracking
+            your progress and unlocking powerful insights!
+          </p>
+        </motion.div>
+      ) : (
+        <>
+          <motion.section variants={itemVariant}>
+            <h2 className="text-xl font-semibold text-brand-text mb-4">
+              Activity (Last 30 Days)
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <StatsCard
+                title="Workouts"
+                value={recentStats.workoutsThisMonth}
+                icon={<BoltIcon className="w-6 h-6" />}
+              />
+              <StatsCard
+                title="Avg. Duration"
+                value={recentStats.avgDuration}
+                unit="min"
+                icon={<ClockIcon className="w-6 h-6" />}
+              />
+              <StatsCard
+                title="Avg. Calories"
+                value={recentStats.avgCalories}
+                unit="kcal"
+                icon={<FireIcon className="w-6 h-6" />}
+              />
+            </div>
+          </motion.section>
+
+          <motion.section variants={itemVariant}>
+            <h2 className="text-xl font-semibold text-brand-text mb-4">
+              Body Composition
+            </h2>
+            <Card className="!p-2 sm:!p-4 md:!p-6">
+              <ProgressChart
+                data={chartData}
+                xAxisDataKey="date"
+                title="Weight & BMI Trend"
+                height={350}
+                goal={
+                  user?.goals?.weightKg
+                    ? {
+                        value: user.goals.weightKg,
+                        label: `Goal`,
+                        yAxisId: "left",
+                      }
+                    : undefined
+                }
+                dataKeys={[
+                  {
+                    key: "Weight",
+                    name: "Weight (kg)",
+                    color: "var(--color-primary)",
+                    yAxisId: "left",
+                    type: "area",
+                  },
+                  {
+                    key: "BMI",
+                    name: "BMI",
+                    color: "rgb(var(--color-secondary-rgb))",
+                    yAxisId: "right",
+                  },
+                ]}
+              />
+            </Card>
+          </motion.section>
+
+          <motion.section variants={itemVariant}>
+            <h2 className="text-xl font-semibold text-brand-text mb-4">
+              All-Time Progress
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <StatsCard
+                title="Total Workouts"
+                value={allTimeStats.allTimeWorkouts}
+                icon={<TrophyIcon className="w-6 h-6" />}
+              />
+              <StatsCard
+                title="Current Weight"
+                value={allTimeStats.latestWeight}
+                unit="kg"
+                icon={<ScaleIcon className="w-6 h-6" />}
+              />
+              <StatsCard
+                title="Weight Trend"
+                value={`${bodyTrends.weightChange >= 0 ? "+" : ""}${
+                  bodyTrends.weightChange
+                }`}
+                unit="kg"
+                icon={<ArrowTrendingUpIcon className="w-6 h-6" />}
+                trend={bodyTrends.weightChange > 0 ? "up" : "down"}
+                trendDescription="since beginning"
+              />
+            </div>
+          </motion.section>
+        </>
+      )}
+    </motion.div>
   );
 };
 

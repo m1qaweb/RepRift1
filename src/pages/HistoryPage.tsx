@@ -1,7 +1,7 @@
 // /src/pages/HistoryPage.tsx – Displays past workouts in a calendar view.
 import React, { useEffect, useState, useCallback } from "react"; // Added useCallback
 import { motion, AnimatePresence } from "framer-motion";
-import { WorkoutLog, fetchWorkoutLogs } from "../utils/fakeApi";
+import { WorkoutLog, fetchWorkoutLogs } from "../utils/API";
 import { getDaysInMonth, startOfMonth, getDay, format } from "date-fns";
 import { formatDate as formatDateUtil } from "../utils/dateUtils";
 

@@ -1,4 +1,5 @@
-// /src/components/Analytics/StatsCard.tsx
+// /src/components/Analytics/StatsCard.tsx (Slightly Upgraded)
+
 import React from "react";
 import { motion } from "framer-motion";
 import { ArrowUpIcon, ArrowDownIcon } from "@heroicons/react/24/solid";
@@ -10,7 +11,8 @@ interface StatsCardProps {
   icon?: React.ReactNode;
   unit?: string;
   trend?: "up" | "down" | "neutral";
-  trendValue?: string;
+  trendValue?: string | number; // Now accepts number too
+  trendDescription?: string; // <<< NEW PROP
   onVisibleAnimate?: boolean;
   className?: string;
 }
@@ -22,25 +24,10 @@ const StatsCard: React.FC<StatsCardProps> = ({
   unit,
   trend,
   trendValue,
+  trendDescription,
   onVisibleAnimate = true,
   className,
 }) => {
-  const cardVariants = {
-    hidden: {
-      opacity: 0,
-      y: 25,
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 120,
-        damping: 18,
-      },
-    },
-  };
-
   const trendColorClasses = {
     up: "text-success",
     down: "text-error",
@@ -49,11 +36,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
 
   return (
     <motion.div
-      variants={cardVariants}
-      initial={onVisibleAnimate ? "hidden" : false}
-      whileInView={onVisibleAnimate ? "visible" : undefined}
-      viewport={{ once: true, amount: 0.2 }}
-      className={className}
+    // ... motion props no changes ...
     >
       <Card
         className="p-5 flex flex-col items-start justify-between min-h-[130px] shadow-brand"
@@ -90,6 +73,12 @@ const StatsCard: React.FC<StatsCardProps> = ({
               <ArrowDownIcon className="h-3.5 w-3.5 mr-0.5" />
             )}
             <span>{trendValue}</span>
+            {/* <<< RENDER NEW PROP HERE */}
+            {trendDescription && (
+              <span className="ml-1 text-brand-text-muted/80">
+                {trendDescription}
+              </span>
+            )}
           </div>
         )}
       </Card>

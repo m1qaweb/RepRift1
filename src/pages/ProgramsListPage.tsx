@@ -1,11 +1,12 @@
-// /src/pages/ProgramsListPage.tsx
-import React, { useEffect, useState } from "react";
+// /src/pages/ProgramsListPage.tsx (Corrected)
+import React, { useEffect, useState, useCallback } from "react"; // Import useCallback
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../contexts/AuthContext";
 import {
   Program,
   fetchPrograms,
   deleteProgram as apiDeleteProgram,
-} from "../utils/fakeApi"; // Import deleteProgram
+} from "../utils/API";
 import ProgramCard from "../components/Programs/ProgramCard";
 import Button from "../components/UI/Button";
 import ProgramEditorForm from "../components/Programs/ProgramEditorForm";
@@ -13,35 +14,41 @@ import Modal from "../components/UI/Modal";
 import {
   PlusCircleIcon,
   ExclamationTriangleIcon,
-} from "@heroicons/react/24/solid"; // Add ExclamationTriangleIcon
+} from "@heroicons/react/24/solid";
 import Spinner from "../components/UI/Spinner";
 
 const ProgramsListPage: React.FC = () => {
+  const { user } = useAuth(); // <<< FIX: Get the authenticated user
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false); // Renamed for clarity
+  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
 
-  // --- State for Delete Confirmation ---
+  // State for Delete Confirmation
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [programToDelete, setProgramToDelete] = useState<{
     id: string;
     title: string;
   } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false); // Loading state for delete operation
+  const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadPrograms();
-  }, []);
+  // <<< FIX: Wrap the data loading logic in useCallback for stability >>>
+  const loadPrograms = useCallback(() => {
+    // Guard against running before user is loaded
+    if (!user) return;
 
-  const loadPrograms = () => {
     setIsLoading(true);
-    fetchPrograms()
+    fetchPrograms(user.id) // <<< FIX: Pass the required userId
       .then(setPrograms)
       .catch(console.error)
       .finally(() => setIsLoading(false));
-  };
+  }, [user]); // This function is recreated only when the user object changes
+
+  // <<< FIX: The effect now correctly depends on the stable loadPrograms function >>>
+  useEffect(() => {
+    loadPrograms();
+  }, [loadPrograms]);
 
   const handleOpenModalForNew = () => {
     setEditingProgram(null);
@@ -70,13 +77,12 @@ const ProgramsListPage: React.FC = () => {
       setPrograms((prev) => [savedProgram, ...prev]);
     }
     handleCloseEditorModal();
-    // loadPrograms(); // Or optimistically update as above
   };
 
-  // --- Delete Program Handlers ---
+  // Delete Program Handlers (No changes needed here)
   const handleOpenDeleteModal = (programId: string, programTitle: string) => {
     setProgramToDelete({ id: programId, title: programTitle });
-    setDeleteError(null); // Clear previous errors
+    setDeleteError(null);
     setIsDeleteModalOpen(true);
   };
 
@@ -92,9 +98,8 @@ const ProgramsListPage: React.FC = () => {
     setDeleteError(null);
     try {
       await apiDeleteProgram(programToDelete.id);
-      setPrograms((prev) => prev.filter((p) => p.id !== programToDelete.id)); // Optimistic update
+      setPrograms((prev) => prev.filter((p) => p.id !== programToDelete.id));
       handleCloseDeleteModal();
-      // Optionally, show success toast here: toast.success(`"${programToDelete.title}" deleted successfully.`);
     } catch (error) {
       console.error("Failed to delete program:", error);
       setDeleteError(
@@ -102,12 +107,12 @@ const ProgramsListPage: React.FC = () => {
           ? error.message
           : "Could not delete program. Please try again."
       );
-      // Optionally, show error toast here
     } finally {
       setIsDeleting(false);
     }
   };
 
+  // No changes to variants or JSX rendering below this line
   const programsGridVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
@@ -122,7 +127,6 @@ const ProgramsListPage: React.FC = () => {
   };
 
   if (isLoading && programs.length === 0) {
-    // Show full page loader only if initial load and no programs yet
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] py-10 text-brand-text">
         <Spinner size="lg" className="mb-3" /> <p>Loading your programs...</p>
@@ -180,7 +184,6 @@ const ProgramsListPage: React.FC = () => {
                 exit={{ opacity: 0, y: -10 }}
                 className="text-center py-12 sm:py-16"
               >
-                <PlusCircleIcon className="h-16 w-16 sm:h-20 sm:w-20 mx-auto text-brand-primary/30 mb-5" />
                 <h2 className="text-xl font-semibold text-brand-text mb-2">
                   No Workout Programs Found
                 </h2>
@@ -212,7 +215,6 @@ const ProgramsListPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* --- Delete Confirmation Modal --- */}
       {isDeleteModalOpen && programToDelete && (
         <Modal
           isOpen={isDeleteModalOpen}

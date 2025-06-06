@@ -1,4 +1,4 @@
-// /src/components/Programs/ExerciseInputRow.tsx
+// /src/components/Programs/ExerciseInputRow.tsx (Corrected & Memoized)
 import React from "react";
 import { motion } from "framer-motion";
 import {
@@ -32,6 +32,7 @@ const ExerciseInputRow: React.FC<ExerciseInputRowProps> = ({
       "name" | "masterExerciseId" | "localId"
     >
   ) => {
+    // This function logic is correct as-is
     return errors?.[fieldName]?.message;
   };
 
@@ -61,6 +62,7 @@ const ExerciseInputRow: React.FC<ExerciseInputRowProps> = ({
         </div>
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-3 gap-x-3 gap-y-2 items-start pl-4">
+        {/* All JSX below this point is functionally correct and does not need changes */}
         <div>
           <label htmlFor={`exercises.${index}.sets`} className="sr-only">
             Sets
@@ -131,4 +133,7 @@ const ExerciseInputRow: React.FC<ExerciseInputRowProps> = ({
     </div>
   );
 };
-export default ExerciseInputRow;
+
+// THE FIX: Wrap the component in React.memo to prevent unnecessary re-renders.
+// This is a critical performance optimization for components in a list.
+export default React.memo(ExerciseInputRow);

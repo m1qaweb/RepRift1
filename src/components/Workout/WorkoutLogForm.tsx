@@ -1,5 +1,5 @@
-// /src/components/Workout/WorkoutLogForm.tsx
-import React, { useState, useEffect } from "react";
+// /src/components/Workout/WorkoutLogForm.tsx (Corrected)
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
 import {
@@ -7,13 +7,14 @@ import {
   WorkoutLog,
   fetchProgramById,
   saveWorkoutLog,
-} from "../../utils/fakeApi";
+} from "../../utils/API";
 import Button from "../UI/Button";
 import ExerciseLogRow from "./ExerciseLogRow";
 import Timer from "./Timer";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { formatDate } from "../../utils/dateUtils";
 import Spinner from "../UI/Spinner";
+import { useAuth } from "../../contexts/AuthContext"; // <<< FIX: Import useAuth
 
 interface WorkoutLogFormProps {}
 
@@ -40,6 +41,7 @@ type WorkoutFormInputs = {
 };
 
 const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
+  const { user } = useAuth(); // <<< FIX: Get the user from AuthContext
   const location = useLocation();
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(location.search);
@@ -52,6 +54,9 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
   const [activeTimerExerciseIndex, setActiveTimerExerciseIndex] = useState<
     number | null
   >(null);
+
+  // Create a memoized start time to calculate duration
+  const workoutStartTime = useMemo(() => new Date(), []);
 
   const {
     register,
@@ -127,13 +132,35 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
   }, [watchedProgramId, reset, preSelectedDate]);
 
   const onSubmitHandler: SubmitHandler<WorkoutFormInputs> = async (data) => {
-    const workoutLogToSave: Omit<
-      WorkoutLog,
-      "id" | "durationMinutes" | "caloriesBurned"
-    > = {
+    // FIX: Check for user before submitting
+    if (!user) {
+      console.error("Cannot log workout, no user is logged in.");
+      // Optionally show an error to the user
+      return;
+    }
+
+    // FIX: Calculate total volume to estimate calories. (Simple estimation)
+    const totalVolume = data.loggedExercises.reduce(
+      (sum, le) =>
+        sum +
+        le.sets.reduce(
+          (setSum, s) => setSum + (s.reps || 0) * (s.weight || 0),
+          0
+        ),
+      0
+    );
+
+    // FIX: The type here should be `Omit<WorkoutLog, "id">` because we are providing all other fields
+    const workoutLogToSave: Omit<WorkoutLog, "id"> = {
+      userId: user.id, // <<< FIX #1: Add the required userId
       programId: data.programId,
       programTitle: data.programTitle,
       date: data.date,
+      // <<< FIX #2: Add the required duration and calories fields
+      durationMinutes: Math.round(
+        (new Date().getTime() - workoutStartTime.getTime()) / 60000
+      ), // Simple duration calculation
+      caloriesBurned: Math.round(totalVolume * 0.05), // Simple calorie estimation based on volume
       notes: data.notes,
       completedExercises: data.loggedExercises.map((le) => ({
         exerciseId: le.exerciseId,

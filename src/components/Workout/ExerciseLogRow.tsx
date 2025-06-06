@@ -1,7 +1,7 @@
-// /src/components/Workout/ExerciseLogRow.tsx
+// /src/components/Workout/ExerciseLogRow.tsx (Corrected & Memoized)
 import React from "react";
 import { motion } from "framer-motion";
-import { Exercise } from "../../utils/fakeApi";
+import { Exercise } from "../../utils/API";
 import Button from "../UI/Button";
 import { PlayIcon, CheckIcon } from "@heroicons/react/24/solid";
 
@@ -23,7 +23,8 @@ interface ExerciseLogRowProps {
   isTimerActive: boolean;
 }
 
-const ExerciseLogRow: React.FC<ExerciseLogRowProps> = ({
+// NOTE: Component logic remains identical as it was functionally correct.
+const ExerciseLogRowComponent: React.FC<ExerciseLogRowProps> = ({
   exercise,
   loggedSets,
   onSetChange,
@@ -143,5 +144,9 @@ const ExerciseLogRow: React.FC<ExerciseLogRowProps> = ({
     </motion.div>
   );
 };
+
+// THE FIX: Wrap the component in React.memo to prevent unnecessary re-renders when other
+// rows in the list are updated. This is a critical performance optimization.
+const ExerciseLogRow = React.memo(ExerciseLogRowComponent);
 
 export default ExerciseLogRow;

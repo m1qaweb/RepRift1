@@ -1,15 +1,15 @@
-// /src/pages/InitialSetupPage.tsx
+// /src/pages/InitialSetupPage.tsx (Fully Corrected)
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Button from "../components/UI/Button";
-import InputField from "../components/Auth/InputField"; // Reusing your styled input
+import InputField from "../components/Auth/InputField";
 import Spinner from "../components/UI/Spinner";
-import { getISOStringFromDate } from "../utils/dateUtils"; // Ensure this utility exists
-import { saveBodyMetric } from "../utils/fakeApi";
-import { User } from "../utils/fakeApi"; // Import User type
+import { getISOStringFromDate } from "../utils/dateUtils";
+import { saveBodyMetric } from "../utils/API";
+import { User } from "../utils/API";
 import {
   InformationCircleIcon,
   ArrowTrendingUpIcon,
@@ -17,8 +17,8 @@ import {
 } from "@heroicons/react/24/outline";
 
 type SetupFormInputs = {
-  heightCm: string; // Input as string, then parse
-  weightKg: string; // Input as string, then parse
+  heightCm: string;
+  weightKg: string;
 };
 
 const InitialSetupPage: React.FC = () => {
@@ -34,11 +34,17 @@ const InitialSetupPage: React.FC = () => {
   } = useForm<SetupFormInputs>({ mode: "onTouched" });
 
   useEffect(() => {
-    // If user somehow lands here but has completed setup, or no user, redirect
     if (!authLoading && (!user || user.initialSetupCompleted)) {
       navigate("/dashboard", { replace: true });
     }
   }, [user, authLoading, navigate]);
+
+  // A simple helper function to calculate BMI.
+  const calculateBMI = (weight: number, height: number): number | undefined => {
+    if (height > 0)
+      return parseFloat((weight / (height / 100) ** 2).toFixed(1));
+    return undefined;
+  };
 
   const onSubmit: SubmitHandler<SetupFormInputs> = async (data) => {
     if (!user) {
@@ -63,21 +69,18 @@ const InitialSetupPage: React.FC = () => {
     }
 
     try {
-      // 1. Update user profile with height and mark setup as complete
       const profileUpdateData: Partial<User> = {
         heightCm: height,
         initialSetupCompleted: true,
       };
       await updateUser(profileUpdateData);
 
-      // 2. Save initial weight as a body metric
-      const todayISO = getISOStringFromDate(new Date());
+      // <<< THE FIX: Save a complete first metric including the calculated BMI >>>
       await saveBodyMetric({
-        date: todayISO,
+        date: getISOStringFromDate(new Date()),
         weightKg: weight,
-        // Optionally calculate and save BMI here if you want to store it immediately
-        // bmi: calculateBMI(weight, height),
-        userId: user.id, // If your saveBodyMetric expects it
+        bmi: calculateBMI(weight, height), // Calculate and save initial BMI
+        userId: user.id,
       });
 
       navigate("/dashboard", { replace: true });
@@ -117,7 +120,6 @@ const InitialSetupPage: React.FC = () => {
             track your progress effectively.
           </p>
         </div>
-
         {error && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -128,7 +130,6 @@ const InitialSetupPage: React.FC = () => {
             {error}
           </motion.div>
         )}
-
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <InputField
             id="heightCm"
@@ -144,12 +145,11 @@ const InitialSetupPage: React.FC = () => {
             error={formErrors.heightCm?.message}
             leadingIcon={
               <InformationCircleIcon className="h-5 w-5 text-brand-text-muted" />
-            } // Example icon
+            }
           />
           <p className="-mt-4 text-xs text-brand-text-muted/80 pl-1">
             Enter your height in centimeters (cm).
           </p>
-
           <InputField
             id="weightKg"
             label="Your Current Weight"
@@ -164,12 +164,11 @@ const InitialSetupPage: React.FC = () => {
             error={formErrors.weightKg?.message}
             leadingIcon={
               <InformationCircleIcon className="h-5 w-5 text-brand-text-muted" />
-            } // Example icon
+            }
           />
           <p className="-mt-4 text-xs text-brand-text-muted/80 pl-1">
             Enter your weight in kilograms (kg).
           </p>
-
           <div className="pt-4">
             <Button
               type="submit"

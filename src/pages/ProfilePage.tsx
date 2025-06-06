@@ -20,7 +20,7 @@ import {
 } from "@heroicons/react/24/solid";
 import Spinner from "../components/UI/Spinner";
 // Assuming User type from fakeApi.ts or a types file
-import { User } from "../utils/fakeApi"; // Import User type if not already
+import { User } from "../utils/API"; // Import User type if not already
 
 interface ProfileData {
   name: string;

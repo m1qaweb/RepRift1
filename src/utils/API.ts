@@ -1,6 +1,5 @@
-// /src/utils/fakeApi.ts - Mock API for data fetching and mutations.
+// /src/utils/Api.ts
 
-// --- Types ---
 export interface User {
   id: string;
   name: string;
@@ -9,18 +8,42 @@ export interface User {
   bio?: string;
   heightCm?: number;
   goals?: {
-    // <<< ADD THIS BLOCK
     weightKg?: number;
   };
   initialSetupCompleted?: boolean;
+}
+
+export interface MasterExercise {
+  id: string;
+  name: string;
+  category:
+    | "Strength"
+    | "Cardio"
+    | "Stretching"
+    | "Plyometrics"
+    | "Mobility"
+    | "Stability"
+    | "Power";
+  bodyPart:
+    | "Chest"
+    | "Back"
+    | "Legs"
+    | "Shoulders"
+    | "Biceps"
+    | "Triceps"
+    | "Core"
+    | "Full Body"
+    | "Glutes"
+    | "Arms";
+  equipment: string[];
 }
 
 export interface Exercise {
   id: string;
   name: string;
   sets: number;
-  reps: string; // e.g., "8-12" or "15"
-  restInterval: number; // in seconds
+  reps: string;
+  restInterval: number;
 }
 
 export interface Program {
@@ -28,211 +51,393 @@ export interface Program {
   title: string;
   description: string;
   exercises: Exercise[];
-  createdBy: string; // userId
+  createdBy: string;
+}
+
+export interface CompletedSet {
+  reps: number | null;
+  weight: number | null;
+  completed: boolean;
+}
+
+export interface CompletedExercise {
+  exerciseId: string;
+  exerciseName: string;
+  sets: CompletedSet[];
 }
 
 export interface WorkoutLog {
   id: string;
+  userId: string;
   programId: string;
-  programTitle: string; // denormalized for convenience
-  date: string; // ISO Date string (YYYY-MM-DD)
-  durationMinutes?: number; // total duration
-  caloriesBurned?: number;
+  programTitle: string;
+  date: string;
+  durationMinutes: number;
+  caloriesBurned: number;
   notes?: string;
-
-  completedExercises: Array<{
-    exerciseId: string;
-    exerciseName: string; // denormalized
-    sets: Array<{
-      reps: number | null;
-      weight: number | null;
-      completed: boolean;
-    }>;
-  }>;
+  completedExercises: CompletedExercise[];
 }
 
 export interface BodyMetric {
-  date: string; // ISO Date string
-  weightKg?: number;
+  id: string;
+  userId: string;
+  date: string;
+  weightKg: number;
   bmi?: number;
   bodyFatPercentage?: number;
 }
-export interface MasterExercise {
-  id: string;
-  name: string;
-  bodyPart: string; // e.g., "Chest", "Legs", "Biceps"
-  category: string; // e.g., "Strength", "Cardio", "Olympic Weightlifting", "Plyometrics", "Stretching"
-  equipment?: string[]; // e.g., ["Barbell", "Dumbbell", "Kettlebell", "Bodyweight"]
-  description?: string;
-  videoUrl?: string; // Link to an example video
-  // Add muscle groups, difficulty, etc. as needed
-}
+
 // --- Mock Data Store ---
+
+let nextId = 100;
+const generateId = (prefix: string) => `${prefix}-${nextId++}`;
+
 let mockUsers: User[] = [
   {
-    id: "user1",
-    name: "Test User",
+    id: "user-1",
+    name: "Alex Taylor",
     email: "test@example.com",
-    avatarUrl: "https://via.placeholder.com/150/0000FF/808080?Text=User",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&q=80",
+    bio: "Fitness enthusiast focused on strength training and progressive overload.",
+    heightCm: 180,
+    goals: {
+      weightKg: 80,
+    },
+    initialSetupCompleted: true,
   },
 ];
 
 let mockPrograms: Program[] = [
   {
-    id: "prog1",
-    title: "Full Body Strength",
-    description: "A balanced full-body workout for strength and muscle gain.",
+    id: "prog-1",
+    createdBy: "user-1",
+    title: "Classic Push Day",
+    description: "Focuses on chest, shoulders, and triceps.",
     exercises: [
-      { id: "ex1", name: "Squats", sets: 3, reps: "8-12", restInterval: 60 },
       {
-        id: "ex2",
-        name: "Bench Press",
+        id: "master-1",
+        name: "Barbell Bench Press",
+        sets: 3,
+        reps: "5-8",
+        restInterval: 90,
+      },
+      {
+        id: "master-4",
+        name: "Overhead Press",
         sets: 3,
         reps: "8-12",
+        restInterval: 75,
+      },
+      {
+        id: "master-7",
+        name: "Tricep Pushdown",
+        sets: 3,
+        reps: "10-15",
         restInterval: 60,
       },
-      { id: "ex3", name: "Deadlifts", sets: 1, reps: "5", restInterval: 120 },
     ],
-    createdBy: "user1",
   },
   {
-    id: "prog2",
-    title: "Upper Body Hypertrophy",
-    description: "Focus on building muscle in the upper body.",
+    id: "prog-2",
+    createdBy: "user-1",
+    title: "Heavy Pull Day",
+    description: "For building back and bicep thickness.",
     exercises: [
       {
-        id: "ex4",
-        name: "Overhead Press",
-        sets: 4,
+        id: "master-3",
+        name: "Deadlift",
+        sets: 1,
+        reps: "5",
+        restInterval: 180,
+      },
+      {
+        id: "master-5",
+        name: "Pull Up",
+        sets: 3,
+        reps: "AMRAP",
+        restInterval: 90,
+      },
+      {
+        id: "master-6",
+        name: "Dumbbell Curl",
+        sets: 3,
         reps: "10-15",
-        restInterval: 45,
-      },
-      { id: "ex5", name: "Pull Ups", sets: 3, reps: "AMRAP", restInterval: 75 },
-    ],
-    createdBy: "user1",
-  },
-];
-
-let mockWorkoutLogs: WorkoutLog[] = [
-  {
-    id: "log1",
-    programId: "prog1",
-    programTitle: "Full Body Strength",
-    date: "2023-11-15",
-    durationMinutes: 60,
-    caloriesBurned: 350,
-    completedExercises: [
-      {
-        exerciseId: "ex1",
-        exerciseName: "Squats",
-        sets: [
-          { reps: 10, weight: 100, completed: true },
-          { reps: 9, weight: 100, completed: true },
-          { reps: 8, weight: 100, completed: true },
-        ],
-      },
-    ],
-  },
-  {
-    id: "log2",
-    programId: "prog2",
-    programTitle: "Upper Body Hypertrophy",
-    date: "2023-11-17",
-    durationMinutes: 75,
-    caloriesBurned: 400,
-    completedExercises: [
-      {
-        exerciseId: "ex4",
-        exerciseName: "Overhead Press",
-        sets: [
-          { reps: 12, weight: 50, completed: true },
-          { reps: 12, weight: 50, completed: true },
-          { reps: 10, weight: 50, completed: true },
-          { reps: 10, weight: 50, completed: true },
-        ],
+        restInterval: 60,
       },
     ],
   },
 ];
 
 let mockBodyMetrics: BodyMetric[] = [
-  { date: "2023-10-01", weightKg: 75, bmi: 23.4 },
-  { date: "2023-10-15", weightKg: 74.5, bmi: 23.2 },
-  { date: "2023-11-01", weightKg: 74, bmi: 23.1 },
-  { date: "2023-11-15", weightKg: 73.8, bmi: 23.0 },
+  { id: "bm-1", userId: "user-1", date: "2024-03-01", weightKg: 85.5 },
+  { id: "bm-2", userId: "user-1", date: "2024-03-08", weightKg: 85.1 },
+  { id: "bm-3", userId: "user-1", date: "2024-03-15", weightKg: 84.7 },
+  { id: "bm-4", userId: "user-1", date: "2024-03-22", weightKg: 84.9 },
+  { id: "bm-5", userId: "user-1", date: "2024-03-29", weightKg: 83.9 },
+  { id: "bm-6", userId: "user-1", date: "2024-04-05", weightKg: 83.5 },
+  { id: "bm-7", userId: "user-1", date: "2024-04-12", weightKg: 83.1 },
+  { id: "bm-8", userId: "user-1", date: "2024-04-19", weightKg: 82.8 },
+  { id: "bm-9", userId: "user-1", date: "2024-04-26", weightKg: 82.5 },
+  { id: "bm-10", userId: "user-1", date: "2024-05-03", weightKg: 82.2 },
+  { id: "bm-11", userId: "user-1", date: "2024-05-10", weightKg: 82.3 },
+  { id: "bm-12", userId: "user-1", date: "2024-05-17", weightKg: 81.9 },
 ];
 
-// --- Utility to simulate API delay ---
-const simulateDelay = (ms: number = 500) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+let mockWorkoutLogs: WorkoutLog[] = [
+  {
+    id: "log-1",
+    userId: "user-1",
+    programId: "prog-1",
+    programTitle: "Classic Push Day",
+    date: "2024-04-01",
+    durationMinutes: 65,
+    caloriesBurned: 450,
+    completedExercises: [
+      {
+        exerciseId: "master-1",
+        exerciseName: "Barbell Bench Press",
+        sets: [
+          { reps: 8, weight: 100, completed: true },
+          { reps: 7, weight: 100, completed: true },
+          { reps: 6, weight: 100, completed: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: "log-2",
+    userId: "user-1",
+    programId: "prog-2",
+    programTitle: "Heavy Pull Day",
+    date: "2024-04-03",
+    durationMinutes: 70,
+    caloriesBurned: 500,
+    completedExercises: [
+      {
+        exerciseId: "master-3",
+        exerciseName: "Deadlift",
+        sets: [{ reps: 5, weight: 150, completed: true }],
+      },
+    ],
+  },
+  {
+    id: "log-3",
+    userId: "user-1",
+    programId: "prog-1",
+    programTitle: "Classic Push Day",
+    date: "2024-04-08",
+    durationMinutes: 68,
+    caloriesBurned: 470,
+    completedExercises: [
+      {
+        exerciseId: "master-1",
+        exerciseName: "Barbell Bench Press",
+        sets: [
+          { reps: 8, weight: 102.5, completed: true },
+          { reps: 8, weight: 102.5, completed: true },
+          { reps: 7, weight: 102.5, completed: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: "log-4",
+    userId: "user-1",
+    programId: "prog-2",
+    programTitle: "Heavy Pull Day",
+    date: "2024-04-15",
+    durationMinutes: 75,
+    caloriesBurned: 520,
+    completedExercises: [
+      {
+        exerciseId: "master-3",
+        exerciseName: "Deadlift",
+        sets: [{ reps: 5, weight: 155, completed: true }],
+      },
+    ],
+  },
+  {
+    id: "log-5",
+    userId: "user-1",
+    programId: "prog-1",
+    programTitle: "Classic Push Day",
+    date: "2024-04-22",
+    durationMinutes: 72,
+    caloriesBurned: 510,
+    completedExercises: [
+      {
+        exerciseId: "master-1",
+        exerciseName: "Barbell Bench Press",
+        sets: [
+          { reps: 8, weight: 105, completed: true },
+          { reps: 8, weight: 105, completed: true },
+          { reps: 8, weight: 105, completed: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: "log-6",
+    userId: "user-1",
+    programId: "prog-2",
+    programTitle: "Heavy Pull Day",
+    date: "2024-04-29",
+    durationMinutes: 80,
+    caloriesBurned: 550,
+    completedExercises: [
+      {
+        exerciseId: "master-3",
+        exerciseName: "Deadlift",
+        sets: [{ reps: 5, weight: 160, completed: true }],
+      },
+    ],
+  },
+  {
+    id: "log-7",
+    userId: "user-1",
+    programId: "prog-1",
+    programTitle: "Classic Push Day",
+    date: "2024-05-06",
+    durationMinutes: 70,
+    caloriesBurned: 490,
+    completedExercises: [
+      {
+        exerciseId: "master-1",
+        exerciseName: "Barbell Bench Press",
+        sets: [
+          { reps: 6, weight: 107.5, completed: true },
+          { reps: 5, weight: 107.5, completed: true },
+          { reps: 5, weight: 107.5, completed: true },
+        ],
+      },
+    ],
+  },
+];
+
+const simulateDelay = (ms: number = 800) =>
+  new Promise((res) => setTimeout(res, ms));
 
 // --- Auth ---
 export const fakeLogin = async (email: string, pass: string): Promise<User> => {
   await simulateDelay();
-  const user = mockUsers.find((u) => u.email === email); // In a real app, check password hash
+  const user = mockUsers.find(
+    (u) => u.email.toLowerCase() === email.toLowerCase()
+  );
   if (user && pass) {
-    // simplified password check
-    return user;
+    return JSON.parse(JSON.stringify(user));
   }
-  throw new Error("Invalid credentials");
+  throw new Error("Invalid credentials.");
 };
-
+export const fakeLogout = async () => await simulateDelay(200);
 export const fakeSignup = async (
   name: string,
   email: string,
   pass: string
 ): Promise<User> => {
   await simulateDelay();
-  console.log("Fake API: Attempting signup for", email);
   if (mockUsers.some((u) => u.email === email)) {
-    console.log("Fake API: Signup failed - email exists", email);
     throw new Error("Email address is already in use.");
   }
-  if (!pass || pass.length < 8) {
-    console.log("Fake API: Signup failed - password too short", email);
-    throw new Error("Password must be at least 8 characters long.");
-  }
   const newUser: User = {
-    id: `user${mockUsers.length + 1}${Date.now()}`,
+    id: generateId("user"),
     name,
     email,
-    avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      name.charAt(0).toUpperCase()
-    )}&background=random&color=fff&size=128`,
+    initialSetupCompleted: false,
     bio: "",
-    heightCm: undefined, // Initialize height as undefined
-    initialSetupCompleted: false, // <<< SET TO FALSE FOR NEW USERS
+    heightCm: undefined,
+    avatarUrl: "",
   };
   mockUsers.push(newUser);
-  console.log("Fake API: Signup successful for", email, newUser);
   return JSON.parse(JSON.stringify(newUser));
 };
 
-export const fakeLogout = async (): Promise<void> => {
-  await simulateDelay();
-  // No real server-side session to clear for this mock
-  return;
+export const fetchWorkoutLogs = async (filters?: {
+  date?: string;
+  userId?: string;
+}): Promise<WorkoutLog[]> => {
+  console.log("Fake API: Fetching workout logs with filters:", filters);
+  await simulateDelay(1200);
+
+  const userLogs = mockWorkoutLogs.filter(
+    (log) => log.userId === filters?.userId
+  );
+  return JSON.parse(JSON.stringify(userLogs));
 };
 
-// --- Programs ---
-export const fetchPrograms = async (): Promise<Program[]> => {
+export const fetchBodyMetrics = async (
+  userId?: string
+): Promise<BodyMetric[]> => {
+  console.log("Fake API: Fetching body metrics for user:", userId);
+  await simulateDelay(1000);
+  const userMetrics = mockBodyMetrics.filter((m) => m.userId === userId);
+  return JSON.parse(JSON.stringify(userMetrics));
+};
+
+export const fetchPrograms = async (userId: string): Promise<Program[]> => {
+  console.log("Fake API: Fetching programs for user:", userId);
   await simulateDelay();
-  return [...mockPrograms];
+  return JSON.parse(
+    JSON.stringify(mockPrograms.filter((p) => p.createdBy === userId))
+  );
 };
 
 export const fetchProgramById = async (
   programId: string
 ): Promise<Program | undefined> => {
   await simulateDelay();
-  return mockPrograms.find((p) => p.id === programId);
+  return JSON.parse(
+    JSON.stringify(mockPrograms.find((p) => p.id === programId))
+  );
+};
+
+export const fetchMasterExercises = async (
+  searchTerm?: string
+): Promise<MasterExercise[]> => {
+  await simulateDelay(300);
+  console.log("Fake API: Fetching master exercises with term:", searchTerm);
+  if (!searchTerm) {
+    return JSON.parse(JSON.stringify(mockMasterExercises));
+  }
+  const lowerTerm = searchTerm.toLowerCase();
+  const results = mockMasterExercises.filter(
+    (ex) =>
+      ex.name.toLowerCase().includes(lowerTerm) ||
+      ex.bodyPart.toLowerCase().includes(lowerTerm) ||
+      ex.category.toLowerCase().includes(lowerTerm)
+  );
+  return JSON.parse(JSON.stringify(results));
+};
+
+export const saveWorkoutLog = async (
+  logData: Omit<WorkoutLog, "id"> & { id?: string }
+): Promise<WorkoutLog> => {
+  await simulateDelay();
+  if (logData.id) {
+    const index = mockWorkoutLogs.findIndex((l) => l.id === logData.id);
+    if (index > -1) {
+      mockWorkoutLogs[index] = {
+        ...mockWorkoutLogs[index],
+        ...logData,
+      } as WorkoutLog;
+      return JSON.parse(JSON.stringify(mockWorkoutLogs[index]));
+    }
+    throw new Error("Log not found for update");
+  } else {
+    const newLog = { ...logData, id: generateId("log") } as WorkoutLog;
+    mockWorkoutLogs.push(newLog);
+    return JSON.parse(JSON.stringify(newLog));
+  }
 };
 
 export const saveProgram = async (
-  programData: Omit<Program, "id" | "createdBy"> & { id?: string }
+  programData: Omit<Program, "id" | "createdBy"> & {
+    id?: string;
+    createdBy?: string;
+  }
 ): Promise<Program> => {
   await simulateDelay();
   if (programData.id) {
-    // Update existing
     const index = mockPrograms.findIndex((p) => p.id === programData.id);
     if (index > -1) {
       mockPrograms[index] = {
@@ -240,32 +445,50 @@ export const saveProgram = async (
         ...programData,
         createdBy: mockPrograms[index].createdBy,
       };
-      return mockPrograms[index];
+      return JSON.parse(JSON.stringify(mockPrograms[index]));
     }
-    throw new Error("Program not found for update");
+    throw new Error("Program not found");
   } else {
-    // Create new
-    const newProgram: Program = {
+    // Create
+    const newProgram = {
       ...programData,
-      id: `prog${mockPrograms.length + Date.now()}`,
-      createdBy: "user1", // Assume current user
-    };
+      id: generateId("prog"),
+      createdBy: "user-1",
+    } as Program; // Assume user-1
     mockPrograms.push(newProgram);
-    return newProgram;
+    return JSON.parse(JSON.stringify(newProgram));
   }
 };
+
 export const deleteProgram = async (programId: string): Promise<void> => {
   await simulateDelay();
-  console.log("Fake API: Attempting to delete program:", programId);
   const initialLength = mockPrograms.length;
   mockPrograms = mockPrograms.filter((p) => p.id !== programId);
-  if (mockPrograms.length < initialLength) {
-    console.log("Fake API: Program deleted successfully", programId);
-    return;
+  if (mockPrograms.length === initialLength) {
+    throw new Error("Program not found for deletion.");
   }
-  console.error("Fake API: Program not found for deletion", programId);
-  throw new Error("Program not found.");
+  return;
 };
+
+export const saveBodyMetric = async (
+  metric: Partial<BodyMetric>
+): Promise<BodyMetric> => {
+  await simulateDelay();
+
+  const newMetric = { ...metric, id: generateId("bm") } as BodyMetric;
+  mockBodyMetrics.push(newMetric);
+
+  mockBodyMetrics.sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  console.log(
+    "Fake API: Saved new metric. Total metrics now:",
+    mockBodyMetrics.length
+  );
+  return JSON.parse(JSON.stringify(newMetric));
+};
+
 export const mockMasterExercises: MasterExercise[] = [
   {
     id: "master_ex_001",
@@ -274,6 +497,7 @@ export const mockMasterExercises: MasterExercise[] = [
     category: "Strength",
     equipment: ["Barbell", "Rack"],
   },
+
   {
     id: "master_ex_002",
     name: "Bench Press",
@@ -1669,112 +1893,3 @@ export const mockMasterExercises: MasterExercise[] = [
     equipment: ["Bodyweight"],
   },
 ];
-
-export const fetchMasterExercises = async (
-  searchTerm?: string
-): Promise<MasterExercise[]> => {
-  await simulateDelay(300); // Shorter delay for search
-  if (searchTerm) {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return mockMasterExercises.filter(
-      (ex) =>
-        ex.name.toLowerCase().includes(lowerSearchTerm) ||
-        ex.bodyPart.toLowerCase().includes(lowerSearchTerm) ||
-        ex.category.toLowerCase().includes(lowerSearchTerm) ||
-        ex.equipment?.some((e) => e.toLowerCase().includes(lowerSearchTerm))
-    );
-  }
-  return [...mockMasterExercises];
-};
-// --- Workout Logs ---
-export const fetchWorkoutLogs = async (filters?: {
-  date?: string;
-  programId?: string;
-}): Promise<WorkoutLog[]> => {
-  await simulateDelay();
-  let logs = [...mockWorkoutLogs];
-  if (filters?.date) {
-    logs = logs.filter((log) => log.date === filters.date);
-  }
-  if (filters?.programId) {
-    logs = logs.filter((log) => log.programId === filters.programId);
-  }
-  return logs;
-};
-
-export const fetchWorkoutLogById = async (
-  logId: string
-): Promise<WorkoutLog | undefined> => {
-  await simulateDelay();
-  return mockWorkoutLogs.find((l) => l.id === logId);
-};
-
-export const saveWorkoutLog = async (
-  logData: Omit<WorkoutLog, "id"> & { id?: string }
-): Promise<WorkoutLog> => {
-  await simulateDelay();
-  if (logData.id) {
-    const index = mockWorkoutLogs.findIndex((l) => l.id === logData.id);
-    if (index > -1) {
-      mockWorkoutLogs[index] = { ...mockWorkoutLogs[index], ...logData };
-      return mockWorkoutLogs[index];
-    }
-    throw new Error("Workout log not found for update");
-  } else {
-    const newLog: WorkoutLog = {
-      ...logData,
-      id: `log${mockWorkoutLogs.length + Date.now()}`,
-    };
-    mockWorkoutLogs.push(newLog);
-    return newLog;
-  }
-};
-
-// --- Body Metrics ---
-export const fetchBodyMetrics = async (
-  userId?: string
-): Promise<BodyMetric[]> => {
-  // <<< MODIFIED: Added userId? parameter
-  await simulateDelay();
-  console.log(`Fake API: Fetching body metrics.`);
-  if (userId) {
-    console.log(
-      `(Filtering for userId: ${userId} - Note: current mock doesn't use this filter)`
-    );
-    // In a real API or a more complex mock, you would filter metrics by userId here.
-    // For this basic mock, we'll still return all metrics, but the signature is correct.
-  }
-  // Return a deep copy to prevent direct mutation of the mock data store
-  return JSON.parse(JSON.stringify(mockBodyMetrics)).sort(
-    (a: BodyMetric, b: BodyMetric) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-};
-
-export const saveBodyMetric = async (
-  metricData: BodyMetric & { userId?: string }
-): Promise<BodyMetric> => {
-  await simulateDelay();
-
-  const { userId, ...dataToSave } = metricData; // Strip userId if not part of BodyMetric type
-  const existingMetricIdx = mockBodyMetrics.findIndex(
-    (m) => m.date === dataToSave.date
-  );
-
-  if (existingMetricIdx > -1) {
-    mockBodyMetrics[existingMetricIdx] = {
-      ...mockBodyMetrics[existingMetricIdx],
-      ...dataToSave,
-    };
-    console.log("Fake API: Body metric updated for date:", dataToSave.date);
-    return JSON.parse(JSON.stringify(mockBodyMetrics[existingMetricIdx]));
-  } else {
-    const newMetricEntry: BodyMetric = { ...dataToSave };
-    mockBodyMetrics.push(newMetricEntry);
-    mockBodyMetrics.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    console.log("Fake API: Body metric saved for date:", newMetricEntry.date);
-    return JSON.parse(JSON.stringify(newMetricEntry));
-  }
-};

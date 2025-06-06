@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 // UPDATED: Removed Exercise import
-import { Program, fetchProgramById } from "../utils/fakeApi";
+import { Program, fetchProgramById } from "../utils/API";
 import Button from "../components/UI/Button";
 import Card from "../components/UI/Card";
 import Spinner from "../components/UI/Spinner";

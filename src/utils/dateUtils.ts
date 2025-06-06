@@ -1,4 +1,5 @@
-// /src/utils/dateUtils.ts - Functions for date and time manipulation.
+// /src/utils/dateUtils.ts (Corrected and Finalized)
+
 import {
   format,
   parseISO,
@@ -9,11 +10,11 @@ import {
 } from "date-fns";
 
 /**
- * Formats a date object or ISO string into a readable string.
- * Example: "MMMM d, yyyy" -> "January 1, 2023"
- * @param date The date to format (Date object, timestamp number, or ISO string).
- * @param formatString The date-fns format string.
- * @returns The formatted date string.
+ * Formats a date object or string into a specified format string.
+ * Defaults to a long format like "May 21, 2024".
+ * @param date - The date to format (Date object, timestamp, or ISO string).
+ * @param formatString - The date-fns format string (e.g., 'MMM d', 'MM/dd/yyyy').
+ * @returns {string} The formatted date string.
  */
 export const formatDate = (
   date: Date | number | string,
@@ -22,23 +23,31 @@ export const formatDate = (
   const dateObj = typeof date === "string" ? parseISO(date) : new Date(date);
   return format(dateObj, formatString);
 };
+
+/**
+ * Returns the date portion of an ISO string (YYYY-MM-DD) from a Date object.
+ * @param {Date} date - The Date object to convert.
+ * @returns {string} The date string in "YYYY-MM-DD" format.
+ */
 export const getISOStringFromDate = (date: Date): string => {
   return date.toISOString().split("T")[0];
 };
+
 /**
- * Parses an ISO timestamp string into a Date object.
- * @param isoTimestamp The ISO timestamp string.
- * @returns A Date object.
+ * Parses an ISO 8601 string into a Date object.
+ * This is a lightweight wrapper around date-fns's parseISO for consistency.
+ * @param {string} isoTimestamp - The ISO string to parse.
+ * @returns {Date} The resulting Date object.
  */
 export const parseTimestamp = (isoTimestamp: string): Date => {
   return parseISO(isoTimestamp);
 };
 
 /**
- * Calculates the difference in minutes between two dates.
- * @param dateLeft The first date.
- * @param dateRight The second date.
- * @returns The difference in minutes.
+ * Calculates the difference between two dates in whole minutes.
+ * @param {Date | string} dateLeft - The later date.
+ * @param {Date | string} dateRight - The earlier date.
+ * @returns {number} The difference in minutes.
  */
 export const getDurationInMinutes = (
   dateLeft: Date | string,
@@ -50,20 +59,20 @@ export const getDurationInMinutes = (
 };
 
 /**
- * Gets the start of the week for a given date.
- * @param date The date.
- * @param weekStartsOn 0 for Sunday, 1 for Monday, etc.
- * @returns The Date object representing the start of the week.
+ * Finds the start of the week for a given date.
+ * @param {Date} date - The date within the week.
+ * @param {0 | 1} [weekStartsOn=1] - The index of the first day of the week (0 for Sunday, 1 for Monday).
+ * @returns {Date} The Date object for the start of the week.
  */
 export const getStartOfWeek = (date: Date, weekStartsOn: 0 | 1 = 1): Date => {
   return startOfWeek(date, { weekStartsOn });
 };
 
 /**
- * Gets an array of dates for the current week.
- * @param date Date within the target week
- * @param weekStartsOn
- * @returns Array of Date objects
+ * Generates an array of all 7 Date objects for a given week.
+ * @param {Date} [date=new Date()] - A date within the desired week.
+ * @param {0 | 1} [weekStartsOn=1] - The index of the first day of the week.
+ * @returns {Date[]} An array of 7 Date objects, from the start to the end of the week.
  */
 export const getWeekDates = (
   date: Date = new Date(),
@@ -74,13 +83,11 @@ export const getWeekDates = (
 };
 
 /**
- * Checks if two dates are on the same day.
- * @param date1 First date.
- * @param date2 Second date.
- * @returns True if same day, false otherwise.
+ * Checks if two dates are on the same calendar day.
+ * @param {Date} date1
+ * @param {Date} date2
+ * @returns {boolean} True if the dates are the same day.
  */
 export const checkIsSameDay = (date1: Date, date2: Date): boolean => {
   return isSameDay(date1, date2);
 };
-
-// Add other date utility functions as needed.

@@ -11,7 +11,7 @@ import {
   Exercise as ProgramExerciseData,
   saveProgram,
   MasterExercise,
-} from "../../utils/fakeApi";
+} from "../../utils/API";
 import Button from "../UI/Button";
 import ExerciseInputRow from "./ExerciseInputRow";
 import ExerciseSelectionModal from "./ExerciseSelectionModal";

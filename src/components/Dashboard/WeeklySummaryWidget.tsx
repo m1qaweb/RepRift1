@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import Card from "../UI/Card";
 import Spinner from "../UI/Spinner";
-import { fetchWorkoutLogs, WorkoutLog } from "../../utils/fakeApi";
+import { fetchWorkoutLogs, WorkoutLog } from "../../utils/API";
 import { getWeekDates, formatDate } from "../../utils/dateUtils";
 
 interface WeeklySummaryData {

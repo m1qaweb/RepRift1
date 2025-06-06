@@ -7,7 +7,7 @@ import React, {
   ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, fakeLogin, fakeSignup, fakeLogout } from "../utils/fakeApi";
+import { User, fakeLogin, fakeSignup, fakeLogout } from "../utils/API";
 
 interface AuthContextType {
   user: User | null;

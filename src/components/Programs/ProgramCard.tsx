@@ -3,7 +3,7 @@ import React from "react";
 import Button from "../UI/Button";
 import { motion } from "framer-motion";
 import Card from "../UI/Card";
-import { Program } from "../../utils/fakeApi";
+import { Program } from "../../utils/API";
 import {
   PencilSquareIcon,
   EyeIcon,

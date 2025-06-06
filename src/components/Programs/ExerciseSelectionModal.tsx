@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import Modal from "../UI/Modal";
 import Button from "../UI/Button";
 import Spinner from "../UI/Spinner";
-import { MasterExercise, fetchMasterExercises } from "../../utils/fakeApi";
+import { MasterExercise, fetchMasterExercises } from "../../utils/API";
 import {
   MagnifyingGlassIcon,
   CheckCircleIcon,
