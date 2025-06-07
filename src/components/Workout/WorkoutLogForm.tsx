@@ -2,12 +2,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
-import {
-  Program,
-  WorkoutLog,
-  fetchProgramById,
-  saveWorkoutLog,
-} from "../../utils/API";
+import { Program, WorkoutLog } from "../../types/data"; // Keep the types
+import { getProgramById } from "../../services/programService"; // We will use the program service
+import { saveWorkoutLog } from "../../services/workoutLogService"; // And our new workout log service
 import Button from "../UI/Button";
 import ExerciseLogRow from "./ExerciseLogRow";
 import Timer from "./Timer";
@@ -86,7 +83,7 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
   useEffect(() => {
     if (watchedProgramId) {
       setIsLoadingProgram(true);
-      fetchProgramById(watchedProgramId)
+      getProgramById(watchedProgramId)
         .then((prog) => {
           if (prog) {
             setSelectedProgram(prog);

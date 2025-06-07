@@ -1,5 +1,5 @@
 // /src/components/Dashboard/TodaysWorkoutCard.tsx (Corrected & Refactored)
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -9,29 +9,31 @@ import {
   ClockIcon,
 } from "@heroicons/react/24/solid";
 
-import { WorkoutLog, fetchWorkoutLogs } from "../../utils/API";
 import { formatDate } from "../../utils/dateUtils";
 import Button from "../UI/Button";
 import Spinner from "../UI/Spinner";
-// REMOVED: No longer need useTheme for styling decisions.
-// import { useTheme } from "../../contexts/ThemeContext";
+import { getWorkoutLogs } from "../../services/workoutLogService";
+import { useQuery } from "@tanstack/react-query";
 
 interface TodaysWorkoutCardProps {}
 
 const TodaysWorkoutCard: React.FC<TodaysWorkoutCardProps> = () => {
-  const [todaysWorkout, setTodaysWorkout] = useState<WorkoutLog | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // === CHANGE 2: Fetch data using useQuery ===
+  // This one hook replaces the `useState` for logs, `isLoading`, and the `useEffect` hook.
+  const { data: allLogs, isLoading } = useQuery({
+    // Give this query a unique key
+    queryKey: ["workoutLogs"],
+    // Tell it which function to use to fetch the data
+    queryFn: getWorkoutLogs,
+  });
 
-  useEffect(() => {
-    const today = formatDate(new Date(), "yyyy-MM-dd");
-    setIsLoading(true);
-    fetchWorkoutLogs({ date: today })
-      .then((logs) => {
-        setTodaysWorkout(logs.length > 0 ? logs[0] : null);
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+  // This logic is now much cleaner. It derives state from the query result.
+  const todaysWorkout =
+    allLogs?.find(
+      (log) =>
+        formatDate(log.date, "yyyy-MM-dd") ===
+        formatDate(new Date(), "yyyy-MM-dd")
+    ) || null;
 
   const cardVariants = {
     hidden: { opacity: 0, scale: 0.95, y: 20 },

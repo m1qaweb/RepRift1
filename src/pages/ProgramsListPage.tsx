@@ -1,12 +1,12 @@
-// /src/pages/ProgramsListPage.tsx (Corrected)
-import React, { useEffect, useState, useCallback } from "react"; // Import useCallback
+// /src/pages/ProgramsListPage.tsx (UPGRADED FOR SUPABASE)
+
+import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
-import {
-  Program,
-  fetchPrograms,
-  deleteProgram as apiDeleteProgram,
-} from "../utils/API";
+// === CHANGE 1: Import from our new service layer ===
+import { Program } from "../types/data"; // The 'Program' type definition is still useful
+import { getPrograms, deleteProgram } from "../services/programService"; // Import our new functions
+// === END CHANGE ===
 import ProgramCard from "../components/Programs/ProgramCard";
 import Button from "../components/UI/Button";
 import ProgramEditorForm from "../components/Programs/ProgramEditorForm";
@@ -18,13 +18,13 @@ import {
 import Spinner from "../components/UI/Spinner";
 
 const ProgramsListPage: React.FC = () => {
-  const { user } = useAuth(); // <<< FIX: Get the authenticated user
+  const { user } = useAuth();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
 
-  // State for Delete Confirmation
+  // State for Delete Confirmation (No changes needed here)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [programToDelete, setProgramToDelete] = useState<{
     id: string;
@@ -33,19 +33,24 @@ const ProgramsListPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // <<< FIX: Wrap the data loading logic in useCallback for stability >>>
   const loadPrograms = useCallback(() => {
-    // Guard against running before user is loaded
+    // This guard is still important! Don't fetch if the user isn't logged in.
     if (!user) return;
 
     setIsLoading(true);
-    fetchPrograms(user.id) // <<< FIX: Pass the required userId
+    // === CHANGE 2: Call the new service function ===
+    // Note that we no longer need to pass `user.id`. Our RLS policy on the
+    // database handles this securely on the backend!
+    getPrograms()
+      // === END CHANGE ===
       .then(setPrograms)
-      .catch(console.error)
+      .catch((err) => {
+        console.error("Failed to load programs:", err);
+        // Optionally set an error state here to show a message to the user
+      })
       .finally(() => setIsLoading(false));
-  }, [user]); // This function is recreated only when the user object changes
+  }, [user]);
 
-  // <<< FIX: The effect now correctly depends on the stable loadPrograms function >>>
   useEffect(() => {
     loadPrograms();
   }, [loadPrograms]);
@@ -79,7 +84,6 @@ const ProgramsListPage: React.FC = () => {
     handleCloseEditorModal();
   };
 
-  // Delete Program Handlers (No changes needed here)
   const handleOpenDeleteModal = (programId: string, programTitle: string) => {
     setProgramToDelete({ id: programId, title: programTitle });
     setDeleteError(null);
@@ -94,25 +98,26 @@ const ProgramsListPage: React.FC = () => {
 
   const handleConfirmDeleteProgram = async () => {
     if (!programToDelete) return;
+
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await apiDeleteProgram(programToDelete.id);
+      // === CHANGE 3: Call the new delete function from our service ===
+      await deleteProgram(programToDelete.id);
+      // === END CHANGE ===
+
       setPrograms((prev) => prev.filter((p) => p.id !== programToDelete.id));
       handleCloseDeleteModal();
     } catch (error) {
       console.error("Failed to delete program:", error);
       setDeleteError(
-        error instanceof Error
-          ? error.message
-          : "Could not delete program. Please try again."
+        error instanceof Error ? error.message : "Could not delete program."
       );
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // No changes to variants or JSX rendering below this line
   const programsGridVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
@@ -234,7 +239,7 @@ const ProgramsListPage: React.FC = () => {
                 Cancel
               </Button>
               <Button
-                variant="ghost"
+                variant="primary" // Changed for visibility
                 onClick={handleConfirmDeleteProgram}
                 isLoading={isDeleting}
                 disabled={isDeleting}

@@ -1,7 +1,13 @@
-// /src/pages/HistoryPage.tsx – Displays past workouts in a calendar view.
-import React, { useEffect, useState, useCallback } from "react"; // Added useCallback
+// /src/pages/HistoryPage.tsx (UPGRADED FOR SUPABASE)
+
+import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { WorkoutLog, fetchWorkoutLogs } from "../utils/API";
+
+// === CHANGE 1: Import from our new service layer ===
+import { WorkoutLog } from "../types/data"; // The 'WorkoutLog' type is still useful
+import { getWorkoutLogs } from "../services/workoutLogService"; // Import our new function
+// === END CHANGE ===
+
 import { getDaysInMonth, startOfMonth, getDay, format } from "date-fns";
 import { formatDate as formatDateUtil } from "../utils/dateUtils";
 
@@ -20,13 +26,12 @@ interface CalendarDay {
 
 const HistoryPage: React.FC = () => {
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
-  const [allWorkoutLogs, setAllWorkoutLogs] = useState<WorkoutLog[]>([]); // Store ALL fetched logs
+  const [allWorkoutLogs, setAllWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [selectedLog, setSelectedLog] = useState<WorkoutLog | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoadingLogs, setIsLoadingLogs] = useState(true); // For initial log fetching
-  const [isGeneratingCalendar, setIsGeneratingCalendar] = useState(false); // For calendar specific regeneration
-
+  const [isLoadingLogs, setIsLoadingLogs] = useState(true);
+  const [isGeneratingCalendar, setIsGeneratingCalendar] = useState(false);
   const [monthChangeDirection, setMonthChangeDirection] = useState<
     "prev" | "next" | null
   >(null);
@@ -34,20 +39,26 @@ const HistoryPage: React.FC = () => {
   // Fetch all workout logs once on component mount
   useEffect(() => {
     setIsLoadingLogs(true);
-    fetchWorkoutLogs()
+    // === CHANGE 2: Call the new service function ===
+    // We no longer pass any arguments, as RLS handles user filtering on the backend.
+    getWorkoutLogs()
+      // === END CHANGE ===
       .then((logs) => {
         setAllWorkoutLogs(logs);
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error("Failed to load workout history:", err);
+        // You could set an error state here to show a message
+      })
       .finally(() => {
         setIsLoadingLogs(false);
       });
-  }, []); // Empty dependency array: runs only once on mount
+  }, []); // Empty dependency array means this runs only once. Perfect.
 
-  // Generate calendar days whenever the current month or the fetched logs change
-  // This function will now always use `allWorkoutLogs` from state.
+  // The rest of the component's logic is perfectly structured and needs no changes.
   const generateCalendarDays = useCallback(() => {
-    if (isLoadingLogs) return; // Don't generate if initial logs are still loading
+    // ... no change ...
+    if (isLoadingLogs) return;
 
     setIsGeneratingCalendar(true);
     const monthStart = startOfMonth(currentMonthDate);
@@ -70,7 +81,7 @@ const HistoryPage: React.FC = () => {
       });
     }
 
-    // Days of the current month
+    // Days of current month
     for (let i = 1; i <= daysInMonthValue; i++) {
       const currentDateVal = new Date(
         monthStart.getFullYear(),
@@ -78,7 +89,6 @@ const HistoryPage: React.FC = () => {
         i
       );
       const logForDay = allWorkoutLogs.find(
-        // Use allWorkoutLogs from state
         (log) =>
           formatDateUtil(log.date, "yyyy-MM-dd") ===
           formatDateUtil(currentDateVal, "yyyy-MM-dd")
@@ -105,14 +115,14 @@ const HistoryPage: React.FC = () => {
         hasWorkout: false,
       });
     }
+
     setCalendarDays(daysArray);
     setIsGeneratingCalendar(false);
-  }, [currentMonthDate, allWorkoutLogs, isLoadingLogs]); // Depend on these state values
+  }, [currentMonthDate, allWorkoutLogs, isLoadingLogs]);
 
-  // Effect to trigger calendar generation
   useEffect(() => {
     generateCalendarDays();
-  }, [generateCalendarDays]); // Runs when generateCalendarDays function identity changes (due to its deps)
+  }, [generateCalendarDays]);
 
   const handleDayClick = (day: CalendarDay) => {
     if (day.hasWorkout && day.workoutLog) {
@@ -146,13 +156,12 @@ const HistoryPage: React.FC = () => {
           exit: { opacity: 0, x: 50 },
         };
 
-  // Main loading state covers initial log fetch OR subsequent calendar generation if it's slow
   const showLoadingSpinner =
     isLoadingLogs || (isGeneratingCalendar && calendarDays.length === 0);
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6 p-4 bg-light-card dark:bg-dark-card rounded-lg shadow">
+      <div className="flex justify-between items-center mb-6 p-4 bg-brand-card rounded-lg shadow-lg">
         <Button
           variant="ghost"
           onClick={() => changeMonth("prev")}
@@ -161,7 +170,7 @@ const HistoryPage: React.FC = () => {
         >
           <ChevronLeftIcon className="h-6 w-6" />
         </Button>
-        <h1 className="text-2xl font-semibold text-light-text dark:text-dark-text">
+        <h1 className="text-2xl font-semibold text-brand-text">
           {format(currentMonthDate, "MMMM yyyy")}
         </h1>
         <Button
@@ -190,7 +199,7 @@ const HistoryPage: React.FC = () => {
               (dayName) => (
                 <div
                   key={dayName}
-                  className="text-center font-medium text-xs sm:text-sm text-brand-muted py-2"
+                  className="text-center font-medium text-xs sm:text-sm text-brand-text-muted py-2"
                 >
                   {dayName}
                 </div>
@@ -203,33 +212,24 @@ const HistoryPage: React.FC = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.01, duration: 0.2 }}
                 onClick={() => day.isCurrentMonth && handleDayClick(day)}
-                className={`relative p-1 sm:p-2 border aspect-square flex flex-col items-center justify-center rounded-md
-                            ${
-                              day.isCurrentMonth
-                                ? "bg-light-card dark:bg-dark-card hover:bg-gray-100 dark:hover:bg-gray-700"
-                                : "bg-gray-50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-600"
-                            }
-                            ${
-                              day.isToday
-                                ? "border-light-primary dark:border-dark-primary ring-2 ring-light-primary/50 dark:ring-dark-primary/50"
-                                : "border-light-border dark:border-dark-border"
-                            }
-                            ${
-                              day.hasWorkout && day.isCurrentMonth
-                                ? "cursor-pointer"
-                                : ""
-                            }`}
+                className={`relative p-1 sm:p-2 border aspect-square flex flex-col items-center justify-center rounded-md transition-colors ${
+                  day.isCurrentMonth
+                    ? "bg-brand-card hover:bg-brand-secondary/30"
+                    : "bg-brand-secondary/20 text-brand-text-muted/50"
+                } ${
+                  day.isToday
+                    ? "border-brand-primary ring-2 ring-brand-primary/50"
+                    : "border-brand-border"
+                } ${
+                  day.hasWorkout && day.isCurrentMonth ? "cursor-pointer" : ""
+                }`}
               >
-                <span
-                  className={`text-xs sm:text-sm ${
-                    day.isCurrentMonth ? "text-brand-text" : ""
-                  }`}
-                >
+                <span className={`text-xs sm:text-sm`}>
                   {format(day.date, "d")}
                 </span>
                 {day.hasWorkout && day.isCurrentMonth && (
                   <motion.div
-                    className="absolute bottom-1 left-1/2 transform -translate-x-1/2 h-1.5 w-1.5 bg-light-accent dark:bg-dark-accent rounded-full"
+                    className="absolute bottom-1 left-1/2 transform -translate-x-1/2 h-1.5 w-1.5 bg-brand-accent rounded-full"
                     animate={{ scale: [1, 1.3, 1], opacity: [0.7, 1, 0.7] }}
                     transition={{
                       duration: 1.5,
@@ -253,7 +253,6 @@ const HistoryPage: React.FC = () => {
             "MMMM d, yyyy"
           )} - ${selectedLog.programTitle}`}
         >
-          {/* ... modal content as before ... */}
           <div className="text-sm text-brand-text">
             {selectedLog.durationMinutes && (
               <p>
@@ -271,9 +270,10 @@ const HistoryPage: React.FC = () => {
               <ul className="list-disc list-inside space-y-1 max-h-60 overflow-y-auto pr-2">
                 {selectedLog.completedExercises.map((ex, idx) => (
                   <li key={idx}>
+                    {" "}
                     {ex.exerciseName}:{" "}
                     {ex.sets.filter((s) => s.completed).length}/{ex.sets.length}{" "}
-                    sets
+                    sets{" "}
                   </li>
                 ))}
               </ul>

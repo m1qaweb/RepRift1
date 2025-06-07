@@ -1,9 +1,11 @@
 // /src/pages/ProgramDetailPage.tsx – Shows details of a single program.
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 // UPDATED: Removed Exercise import
-import { Program, fetchProgramById } from "../utils/API";
+import { Program } from "../types/data"; // Get the TYPE from our types file
+import { getProgramById } from "../services/programService"; // Get the FUNCTION from our service
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Button from "../components/UI/Button";
 import Card from "../components/UI/Card";
 import Spinner from "../components/UI/Spinner";
@@ -33,29 +35,24 @@ const exerciseCardVariants = {
 const ProgramDetailPage: React.FC = () => {
   const { programId } = useParams<{ programId: string }>();
   const navigate = useNavigate();
-  const [program, setProgram] = useState<Program | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (programId) {
-      setIsLoading(true);
-      fetchProgramById(programId)
-        .then((fetchedProgram) => {
-          // CORRECTED: Handle undefined case
-          if (fetchedProgram) {
-            setProgram(fetchedProgram);
-          } else {
-            setProgram(null);
-          }
-        })
-        .catch(console.error)
-        .finally(() => setIsLoading(false));
-    }
-  }, [programId]);
+  const { data: program, isLoading } = useQuery({
+    // The query key is an array. Including the programId ensures that
+    // if the ID changes, TanStack Query will fetch the new program's data.
+    queryKey: ["program", programId],
+    // The query function calls our service. The `!` tells TypeScript we are sure programId exists.
+    queryFn: () => getProgramById(programId!),
+    // This `enabled` option is a safeguard. It ensures the query will not run if there is no programId.
+    enabled: !!programId,
+  });
 
   const handleEditSuccess = (updatedProgram: Program) => {
-    setProgram(updatedProgram);
+    // Invalidate the query for this specific program to force a refetch
+    queryClient.invalidateQueries({ queryKey: ["program", updatedProgram.id] });
+    // Also invalidate the list of all programs, in case the title changed
+    queryClient.invalidateQueries({ queryKey: ["programs"] });
     setIsEditModalOpen(false);
   };
 

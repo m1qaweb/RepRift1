@@ -10,10 +10,22 @@ import {
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnimatePresence, motion } from "framer-motion";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import Navbar from "./components/Layout/Navbar";
 
 import Footer from "./components/Layout/Footer";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // These are some sensible defaults for production apps
+      staleTime: 1000 * 60 * 5, // Data is considered fresh for 5 minutes
+      refetchOnWindowFocus: false, // Prevents refetching just because a user clicks away and back
+      retry: 2, // If a query fails, retry it 2 more times
+    },
+  },
+});
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SignupPage = lazy(() => import("./pages/SignupPage"));
@@ -227,16 +239,15 @@ interface ProtectedRouteProps {
 
 const App: React.FC = () => {
   return (
-    <Router>
-      {" "}
-      <ThemeProvider>
-        {" "}
-        <AuthProvider>
-          {" "}
-          <AppContent />{" "}
-        </AuthProvider>
-      </ThemeProvider>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ThemeProvider>
+      </Router>
+    </QueryClientProvider>
   );
 };
 

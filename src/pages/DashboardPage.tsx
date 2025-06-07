@@ -1,10 +1,10 @@
-// /src/pages/DashboardPage.tsx – Main dashboard after login.
+// /src/pages/DashboardPage.tsx – Main dashboard after InitialSetupPage.
 import React from "react";
 import { motion } from "framer-motion";
 import TodaysWorkoutCard from "../components/Dashboard/TodaysWorkoutCard";
 import WeeklySummaryWidget from "../components/Dashboard/WeeklySummaryWidget";
 import BodyMetricsWidget from "../components/Dashboard/BodyMetricsWidget";
-import StatsCard from "../components/Analytics/StatsCard"; // Re-using StatsCard here for variety
+import StatsCard from "../components/Analytics/StatsCard";
 import { useAuth } from "../contexts/AuthContext";
 import { FireIcon, BoltIcon } from "@heroicons/react/24/outline";
 

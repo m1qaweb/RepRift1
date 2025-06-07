@@ -1,7 +1,7 @@
 // /src/components/Workout/ExerciseLogRow.tsx (Corrected & Memoized)
 import React from "react";
 import { motion } from "framer-motion";
-import { Exercise } from "../../utils/API";
+import { Exercise } from "../../types/data";
 import Button from "../UI/Button";
 import { PlayIcon, CheckIcon } from "@heroicons/react/24/solid";
 

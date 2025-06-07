@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import Modal from "../UI/Modal";
 import Button from "../UI/Button";
 import Spinner from "../UI/Spinner";
-import { MasterExercise, fetchMasterExercises } from "../../utils/API";
+import { MasterExercise } from "../../types/data";
+import { getMasterExercises } from "../../services/masterExerciseService";
+import { useQuery } from "@tanstack/react-query";
 import {
   MagnifyingGlassIcon,
   CheckCircleIcon,
@@ -22,36 +24,47 @@ const ExerciseSelectionModal: React.FC<ExerciseSelectionModalProps> = ({
   onExercisesSelected,
   alreadySelectedIds = [],
 }) => {
-  const [masterExercises, setMasterExercises] = useState<MasterExercise[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [selectedExercises, setSelectedExercises] = useState<MasterExercise[]>(
     []
   );
 
-  const fetchExercises = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const exercises = await fetchMasterExercises(searchTerm);
-      setMasterExercises(exercises);
-    } catch (err) {
-      console.error("Failed to fetch exercises:", err);
-      setError("Failed to fetch exercises. Please try again later.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [searchTerm]);
+  const {
+    data: masterExercises = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["masterExercises"],
+    queryFn: getMasterExercises,
+    // Since this is static data, we can tell React Query to cache it forever.
+    staleTime: Infinity,
+    // The query will only run when the modal is open.
+    enabled: isOpen,
+  });
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchExercises();
-    } else {
+  // Reset local state when the modal closes
+  React.useEffect(() => {
+    if (!isOpen) {
       setSearchTerm("");
       setSelectedExercises([]);
     }
-  }, [isOpen, fetchExercises]);
+  }, [isOpen]);
+
+  // === CHANGE 3: Derive the filtered list using useMemo ===
+  const filteredMasterExercises = useMemo(() => {
+    if (!searchTerm) {
+      return masterExercises;
+    }
+    const lowerTerm = searchTerm.toLowerCase();
+    // Your component's filtering logic is already great, so we reuse it.
+    return masterExercises.filter(
+      (exercise) =>
+        exercise.name.toLowerCase().includes(lowerTerm) ||
+        exercise.bodyPart.toLowerCase().includes(lowerTerm) ||
+        exercise.category.toLowerCase().includes(lowerTerm)
+    );
+  }, [masterExercises, searchTerm]);
 
   const handleSelectExercise = (exercise: MasterExercise) => {
     setSelectedExercises((prev) =>
@@ -63,15 +76,9 @@ const ExerciseSelectionModal: React.FC<ExerciseSelectionModalProps> = ({
 
   const handleSubmitSelection = () => {
     onExercisesSelected(selectedExercises);
-    onClose();
   };
 
-  const filteredMasterExercises = useMemo(() => {
-    return masterExercises.filter((exercise) =>
-      exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [masterExercises, searchTerm]);
-
+  // This render function is now cleaner as it only depends on the derived list and query states.
   const renderExerciseList = () => {
     if (isLoading) {
       return (
@@ -80,15 +87,13 @@ const ExerciseSelectionModal: React.FC<ExerciseSelectionModalProps> = ({
         </div>
       );
     }
-
     if (error) {
       return (
         <div className="flex-grow flex justify-center items-center">
-          <p className="text-red-500 text-center">{error}</p>
+          <p className="text-error text-center">{error.message}</p>
         </div>
       );
     }
-
     if (filteredMasterExercises.length === 0) {
       return (
         <p className="text-center text-brand-text-muted py-10">

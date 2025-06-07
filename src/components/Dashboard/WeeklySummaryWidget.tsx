@@ -1,5 +1,5 @@
 // /src/components/Dashboard/WeeklySummaryWidget.tsx (Corrected)
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -12,9 +12,10 @@ import {
 } from "recharts";
 import Card from "../UI/Card";
 import Spinner from "../UI/Spinner";
-import { fetchWorkoutLogs, WorkoutLog } from "../../utils/API";
-import { getWeekDates, formatDate } from "../../utils/dateUtils";
 
+import { getWeekDates, formatDate } from "../../utils/dateUtils";
+import { getWorkoutLogs } from "../../services/workoutLogService"; // Get the FUNCTION from our service
+import { useQuery } from "@tanstack/react-query";
 interface WeeklySummaryData {
   name: string;
   date: Date;
@@ -22,42 +23,51 @@ interface WeeklySummaryData {
 }
 
 const WeeklySummaryWidget: React.FC = () => {
-  const [chartData, setChartData] = useState<WeeklySummaryData[]>([]);
-  const [totalWeeklyMinutes, setTotalWeeklyMinutes] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  // === CHANGE 2: Re-introduce the useState for the active bar index ===
+  // This state is purely for UI interaction (hover effects) and belongs here.
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
+  // === END CHANGE ===
 
-  useEffect(() => {
+  // This useQuery hook for data fetching is correct and remains the same.
+  const { data: allLogs, isLoading } = useQuery({
+    queryKey: ["workoutLogs"],
+    queryFn: getWorkoutLogs,
+  });
+
+  // This useMemo for deriving chart data is also correct.
+  const { chartData, totalWeeklyMinutes } = useMemo(() => {
+    if (!allLogs) {
+      return { chartData: [], totalWeeklyMinutes: 0 };
+    }
+
     const weekDates = getWeekDates(new Date(), 1);
-
     const initialData: WeeklySummaryData[] = weekDates.map((date) => ({
       name: formatDate(date, "E"),
       date: date,
       minutes: 0,
     }));
 
-    fetchWorkoutLogs()
-      .then((logs: WorkoutLog[]) => {
-        let currentWeekTotal = 0;
-        const processedData = initialData.map((dayData) => {
-          const logsForDay = logs.filter(
-            (log) =>
-              new Date(log.date).toDateString() === dayData.date.toDateString()
-          );
-          const totalMinutesForDay = logsForDay.reduce(
-            (sum, log) => sum + (log.durationMinutes || 0),
-            0
-          );
-          currentWeekTotal += totalMinutesForDay;
-          return { ...dayData, minutes: totalMinutesForDay };
-        });
-        setChartData(processedData);
-        setTotalWeeklyMinutes(currentWeekTotal);
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+    let currentWeekTotal = 0;
+    const processedData = initialData.map((dayData) => {
+      const logsForDay = allLogs.filter(
+        (log) =>
+          new Date(log.date).toDateString() === dayData.date.toDateString()
+      );
+      const totalMinutesForDay = logsForDay.reduce(
+        (sum, log) => sum + (log.durationMinutes || 0),
+        0
+      );
+      currentWeekTotal += totalMinutesForDay;
+      return { ...dayData, minutes: totalMinutesForDay };
+    });
 
+    return {
+      chartData: processedData,
+      totalWeeklyMinutes: currentWeekTotal,
+    };
+  }, [allLogs]);
+
+  // The loading display is correct.
   if (isLoading) {
     return (
       <Card className="flex items-center justify-center min-h-[200px]">
@@ -66,7 +76,6 @@ const WeeklySummaryWidget: React.FC = () => {
       </Card>
     );
   }
-
   return (
     <Card>
       <div className="p-4 sm:p-5">

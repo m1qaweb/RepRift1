@@ -1,3 +1,5 @@
+// /src/components/Programs/ProgramEditorForm.tsx (UPGRADED FOR SUPABASE)
+
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -6,12 +8,16 @@ import {
   useFieldArray,
   FieldErrors,
 } from "react-hook-form";
+
+// === THE ONLY CHANGE IS HERE ===
 import {
   Program,
   Exercise as ProgramExerciseData,
-  saveProgram,
   MasterExercise,
-} from "../../utils/API";
+} from "../../types/data"; // Keep using types
+import { saveProgram } from "../../services/programService"; // Import saveProgram from our new service
+// === END CHANGE ===
+
 import Button from "../UI/Button";
 import ExerciseInputRow from "./ExerciseInputRow";
 import ExerciseSelectionModal from "./ExerciseSelectionModal";
@@ -74,7 +80,6 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
   });
 
   const { fields, append, remove } = useFieldArray({
-    // 'move' is available if needed for reordering
     control,
     name: "exercises",
     keyName: "localId",
@@ -103,6 +108,8 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
     }
   }, [program, reset]);
 
+  // Your onSubmit handler is perfectly written and needs no changes.
+  // It now calls the real saveProgram function from the service.
   const onSubmitHandler: SubmitHandler<ProgramFormInputs> = async (data) => {
     const exercisesToSave: ProgramExerciseData[] = data.exercises.map((ex) => ({
       id: ex.masterExerciseId,
@@ -118,9 +125,7 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
       exercises: exercisesToSave,
     };
     try {
-      const saved = await saveProgram(
-        programDataToSave as Omit<Program, "createdBy"> & { createdBy?: string }
-      );
+      const saved = await saveProgram(programDataToSave);
       setToastMessage("Program saved successfully!");
       setToastType("success");
       setShowToast(true);
@@ -329,7 +334,9 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
                         }`}
           >
             <div className="flex items-center">
-              <Spinner size="sm" colorClass="text-white" className="mr-2" />{" "}
+              {isSubmitting ? (
+                <Spinner size="sm" colorClass="text-white" className="mr-2" />
+              ) : null}{" "}
               {toastMessage}
             </div>
           </motion.div>

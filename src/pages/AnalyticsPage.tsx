@@ -1,13 +1,10 @@
-// /src/pages/AnalyticsPage.tsx (Corrected Version)
-import React, { useEffect, useState, useMemo, useCallback } from "react"; // <<< FIX: Import useCallback
+// /src/pages/AnalyticsPage.tsx
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
-import {
-  BodyMetric,
-  WorkoutLog,
-  fetchBodyMetrics,
-  fetchWorkoutLogs,
-} from "../utils/API"; // Corrected from ../utils/API
+import { BodyMetric, WorkoutLog } from "../types/data";
+import { getBodyMetrics } from "../services/bodyMetricService";
+import { getWorkoutLogs } from "../services/workoutLogService";
 import { formatDate } from "../utils/dateUtils";
 
 import ProgressChart from "../components/Analytics/ProgressChart";
@@ -45,10 +42,9 @@ const AnalyticsPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Now fetching from the persistent API
       const [metricsData, logsData] = await Promise.all([
-        fetchBodyMetrics(user.id),
-        fetchWorkoutLogs({ userId: user.id }),
+        getBodyMetrics(),
+        getWorkoutLogs(),
       ]);
       const sortedMetrics = metricsData.sort(
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()

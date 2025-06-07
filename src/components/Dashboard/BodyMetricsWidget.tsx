@@ -1,4 +1,4 @@
-// /src/components/widgets/BodyMetricsWidget.tsx (Corrected with Straight Line Chart)
+// /src/components/widgets/BodyMetricsWidget.tsx
 
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,7 +26,11 @@ import Card from "../UI/Card";
 import Spinner from "../UI/Spinner";
 import Button from "../UI/Button";
 import Modal from "../UI/Modal";
-import { BodyMetric, fetchBodyMetrics, saveBodyMetric } from "../../utils/API";
+import { BodyMetric } from "../../types/data"; // Keep the type
+import {
+  getBodyMetrics,
+  saveBodyMetric,
+} from "../../services/bodyMetricService";
 import {
   formatDate,
   getISOStringFromDate,
@@ -212,7 +216,7 @@ const BodyMetricsWidget: React.FC = () => {
     if (!user) return;
     setIsLoading(true);
     setError(null);
-    fetchBodyMetrics(user.id)
+    getBodyMetrics()
       .then(processMetricsData)
       .catch((err) => {
         console.error("Failed to fetch body metrics:", err);
@@ -227,16 +231,21 @@ const BodyMetricsWidget: React.FC = () => {
 
   const handleLogMetric = async (weight: string) => {
     if (!user || !weight) return;
+
     setIsSavingMetric(true);
-    const todayISO = getISOStringFromDate(new Date());
-    const metricToSave: Partial<BodyMetric> = {
-      date: todayISO,
+
+    // Create the object that matches the type the service function expects.
+    const metricToSave: Omit<BodyMetric, "id"> = {
+      date: getISOStringFromDate(new Date()),
       userId: user.id,
       weightKg: parseFloat(weight),
+      // The `calculateBMI` function returns `number | undefined`, which now
+      // correctly matches the expected type for `bmi`.
+      bmi: calculateBMI(parseFloat(weight), userHeightCm),
+      // The `bodyFatPercentage` is also optional (number | undefined), so
+      // we just omit it if we don't have a value for it.
     };
-    if (userHeightCm && metricToSave.weightKg) {
-      metricToSave.bmi = calculateBMI(metricToSave.weightKg, userHeightCm);
-    }
+
     try {
       await saveBodyMetric(metricToSave);
       setNewWeight("");
@@ -248,7 +257,6 @@ const BodyMetricsWidget: React.FC = () => {
       setIsSavingMetric(false);
     }
   };
-
   const handleLogSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleLogMetric(newWeight);

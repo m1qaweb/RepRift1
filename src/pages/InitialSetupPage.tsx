@@ -8,8 +8,9 @@ import Button from "../components/UI/Button";
 import InputField from "../components/Auth/InputField";
 import Spinner from "../components/UI/Spinner";
 import { getISOStringFromDate } from "../utils/dateUtils";
-import { saveBodyMetric } from "../utils/API";
-import { User } from "../utils/API";
+import { saveBodyMetric } from "../services/bodyMetricService";
+import { User, BodyMetric } from "../types/data";
+
 import {
   InformationCircleIcon,
   ArrowTrendingUpIcon,
@@ -69,19 +70,24 @@ const InitialSetupPage: React.FC = () => {
     }
 
     try {
+      // 1. First, update the user's profile to mark setup as complete.
       const profileUpdateData: Partial<User> = {
         heightCm: height,
         initialSetupCompleted: true,
       };
       await updateUser(profileUpdateData);
 
-      // <<< THE FIX: Save a complete first metric including the calculated BMI >>>
-      await saveBodyMetric({
+      // 2. Then, save their first body metric using our new service.
+      const firstMetric: Omit<BodyMetric, "id"> = {
         date: getISOStringFromDate(new Date()),
         weightKg: weight,
-        bmi: calculateBMI(weight, height), // Calculate and save initial BMI
+        bmi: calculateBMI(weight, height),
         userId: user.id,
-      });
+      };
+
+      // === CHANGE 2: Call the correct service function ===
+      await saveBodyMetric(firstMetric);
+      // === END CHANGE ===
 
       navigate("/dashboard", { replace: true });
     } catch (e) {
