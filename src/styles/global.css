@@ -5,8 +5,8 @@
 
 :root {
   /* Light Theme CSS Variables */
-  --color-background: #ffffff; /* For direct CSS use if needed */
-  --color-background-rgb: 255, 255, 255; /* For Tailwind's rgb(var() / <alpha-value>) */
+  --color-background: #ffffff;
+  --color-background-rgb: 255, 255, 255;
   --color-card: #fafafa;
   --color-card-rgb: 250, 250, 250;
   --color-text: #0a0a0a;
@@ -36,6 +36,19 @@
 
   --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --color-muscle-base: rgb(var(--color-text-rgb) / 0.1);
+  --color-muscle-highlight: rgb(var(--color-primary-rgb));
+
+  --color-muscle-chest: #fc9c9c;
+  --color-muscle-back: #fb8aff;
+  --color-muscle-shoulders: #a02323;
+  --color-muscle-biceps: #87ffb9;
+  --color-muscle-triceps: #3498db;
+  --color-muscle-legs: #9290ff;
+  --color-muscle-glutes: #ffc5c5;
+  --color-muscle-core: #0400ff;
+  --color-muscle-arms: #32e4d5;
+  --font-primary: "Poppins", "Inter", sans-serif;
 }
 
 .dark {
@@ -72,18 +85,13 @@
 }
 
 body {
-  /* --- THIS IS THE KEY CHANGE FOR MORE ROBUST BODY THEMING --- */
-  background-color: rgb(
-    var(--color-background-rgb)
-  ); /* Directly use CSS variable for background */
-  color: rgb(var(--color-text-rgb)); /* Directly use CSS variable for text */
-  /* --- END KEY CHANGE --- */
+  background-color: rgb(var(--color-background-rgb));
+  color: rgb(var(--color-text-rgb));
 
-  /* You can still use @apply for other properties that Tailwind handles well */
   @apply transition-colors duration-300 ease-in-out;
 
   /* Global font settings */
-  font-family: "Inter", sans-serif; /* Applied directly here now */
+  font-family: var(--font-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -171,3 +179,36 @@ body {
 .error-border {
   border-color: var(--color-error);
 } /* Uses the hex var */
+.parent-container-with-grain {
+  position: relative;
+  overflow: hidden;
+}
+
+.parent-container-with-grain::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,...");
+  animation: grain-animation 0.5s steps(4) infinite;
+  opacity: 0.08;
+}
+
+@keyframes grain-animation {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-5%, -5%);
+  }
+  50% {
+    transform: translate(5%, 5%);
+  }
+  75% {
+    transform: translate(-5%, 5%);
+  }
+}

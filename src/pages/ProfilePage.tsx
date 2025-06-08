@@ -1,11 +1,21 @@
-// /src/pages/ProfilePage.tsx (FINAL REFINED VERSION)
-
-import React, { useState, useRef, useEffect } from "react";
+// src/pages/ProfilePage.tsx
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { getWorkoutLogs } from "../services/workoutLogService";
+import { getMasterExercises } from "../services/masterExerciseService";
+import { uploadAvatar } from "../services/storageService";
+import { MasterExercise } from "../types/data";
+
+// FIXED: Import the new component and its required types
+import MuscleHighlightChart, {
+  WorkoutHistoryEntry,
+  UIGroup,
+} from "../components/Profile/MuscularSystemAnalysis";
+
 import Button from "../components/UI/Button";
 import Card from "../components/UI/Card";
-import { uploadAvatar } from "../services/storageService";
 import Spinner from "../components/UI/Spinner";
 import {
   CameraIcon,
@@ -16,13 +26,10 @@ import {
   XCircleIcon,
 } from "@heroicons/react/24/solid";
 
-// --- CHILD COMPONENTS (Defined inside for self-containment) ---
-
 interface ProfileFormData {
   name: string;
   bio: string;
 }
-
 const ProfileInput: React.FC<{
   label: string;
   name: keyof ProfileFormData;
@@ -71,7 +78,6 @@ const ProfileInput: React.FC<{
     )}
   </div>
 );
-
 const ProfileAvatar: React.FC<{
   avatarUrl?: string | null;
   defaultAvatar: string;
@@ -117,7 +123,6 @@ const ProfileAvatar: React.FC<{
   );
 };
 
-// --- MAIN PAGE COMPONENT ---
 const ProfilePage: React.FC = () => {
   const { user, loading: authLoading, updateUser } = useAuth();
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -133,7 +138,51 @@ const ProfilePage: React.FC = () => {
     message: string;
   } | null>(null);
 
-  // Core logic functions remain unchanged.
+  const { data: workoutLogs, isLoading: isLoadingLogs } = useQuery({
+    queryKey: ["workoutLogs", user?.id],
+    queryFn: getWorkoutLogs,
+    enabled: !!user,
+  });
+  const { data: masterExercises, isLoading: isLoadingMaster } = useQuery({
+    queryKey: ["masterExercises"],
+    queryFn: getMasterExercises,
+    staleTime: Infinity,
+  });
+
+  // === DATA TRANSFORMATION - THE FIX IS HERE ===
+  // Transform the raw workout logs into the structure the analysis component needs.
+  const workoutHistory = useMemo((): WorkoutHistoryEntry[] => {
+    if (!workoutLogs || !masterExercises) {
+      return [];
+    }
+    const exerciseIdToBodyPart = new Map<string, UIGroup>();
+    masterExercises.forEach((ex: MasterExercise) => {
+      // Assuming ex.bodyPart aligns with UIGroup names (e.g., "Chest", "Legs")
+      exerciseIdToBodyPart.set(ex.id, ex.bodyPart as UIGroup);
+    });
+
+    // Map each log to a WorkoutHistoryEntry
+    return workoutLogs
+      .map((log) => {
+        // Collect all unique muscle groups trained in this specific log
+        const muscleGroupsInLog = new Set<UIGroup>();
+        log.completedExercises.forEach((compEx) => {
+          const bodyPart = exerciseIdToBodyPart.get(compEx.exerciseId);
+          if (bodyPart) {
+            muscleGroupsInLog.add(bodyPart);
+          }
+        });
+
+        return {
+          date: log.date, // Pass the date of the workout
+          muscleGroups: Array.from(muscleGroupsInLog),
+          intensity: 0.8, // Assign a default intensity
+        };
+      })
+      .filter((entry) => entry.muscleGroups.length > 0); // Only include entries that have trackable muscles
+  }, [workoutLogs, masterExercises]);
+
+  // Unchanged component logic...
   useEffect(() => {
     if (user) {
       setFormData({ name: user.name || "", bio: user.bio || "" });
@@ -193,6 +242,7 @@ const ProfilePage: React.FC = () => {
     setFeedback(null);
   };
 
+  const isLoadingPage = authLoading || isLoadingLogs || isLoadingMaster;
   if (authLoading || !user) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -226,6 +276,7 @@ const ProfilePage: React.FC = () => {
       }}
       className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8"
     >
+      {/* Unchanged header and edit mode UI */}
       <motion.div
         variants={{
           initial: { y: -20, opacity: 0 },
@@ -267,6 +318,7 @@ const ProfilePage: React.FC = () => {
         </AnimatePresence>
       </motion.div>
 
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <motion.div
           variants={{
@@ -291,8 +343,6 @@ const ProfilePage: React.FC = () => {
               <EnvelopeIcon className="h-4 w-4" />
               <span>{user.email}</span>
             </div>
-
-            {/* === REFINED BIO SECTION === */}
             <div className="mt-4 pt-4 border-t border-brand-border/20">
               <p className="text-sm text-brand-text-muted whitespace-pre-line text-center">
                 {user.bio || (
@@ -311,10 +361,10 @@ const ProfilePage: React.FC = () => {
                 )}
               </p>
             </div>
-            {/* === END REFINEMENT === */}
           </Card>
         </motion.div>
 
+        {/* Edit Panel (if active) */}
         <AnimatePresence>
           {editMode && (
             <motion.div
@@ -380,6 +430,31 @@ const ProfilePage: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ==== MUSCLE CHART SECTION (FIXED) ==== */}
+        <motion.div
+          variants={{
+            initial: { y: 20, opacity: 0 },
+            animate: { y: 0, opacity: 1 },
+          }}
+          className="lg:col-span-3"
+        >
+          {" "}
+          {/* Added lg:col-span-3 to take full width */}
+          {isLoadingPage ? (
+            <Card className="h-[550px] flex items-center justify-center">
+              {" "}
+              {/* Adjusted height */}
+              <Spinner />
+              <p className="ml-3 text-brand-text-muted">
+                Analyzing workout history...
+              </p>
+            </Card>
+          ) : (
+            // CORRECTED: Pass the properly formatted `workoutHistory` prop.
+            <MuscleHighlightChart workoutHistory={workoutHistory} />
+          )}
+        </motion.div>
       </div>
     </motion.div>
   );

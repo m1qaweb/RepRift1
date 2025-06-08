@@ -22,7 +22,7 @@ module.exports = {
         brand: "var(--shadow-card)",
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
+        sans: ["Poppins", "sans-serif"],
       },
       keyframes: {
         pulseRed: {
