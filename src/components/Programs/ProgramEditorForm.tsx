@@ -21,7 +21,10 @@ import { saveProgram } from "../../services/programService"; // Import saveProgr
 import Button from "../UI/Button";
 import ExerciseInputRow from "./ExerciseInputRow";
 import ExerciseSelectionModal from "./ExerciseSelectionModal";
-import { PlusCircleIcon } from "@heroicons/react/24/solid";
+import {
+  PlusCircleIcon,
+  RectangleStackIcon,
+} from "@heroicons/react/24/outline";
 import { validateRequired } from "../../utils/validators";
 import Spinner from "../UI/Spinner";
 
@@ -47,14 +50,19 @@ type ProgramFormInputs = {
 };
 
 const listItemVariants = {
-  initial: { opacity: 0, y: -10, scale: 0.98 },
+  initial: { opacity: 0, y: 20, scale: 0.98 },
   animate: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: "spring", stiffness: 200, damping: 25 },
+    transition: { type: "spring", stiffness: 100, damping: 15, mass: 0.8 },
   },
-  exit: { opacity: 0, x: 30, scale: 0.95, transition: { duration: 0.2 } },
+  exit: {
+    opacity: 0,
+    x: -30,
+    scale: 0.95,
+    transition: { duration: 0.25, ease: "easeOut" },
+  },
 };
 
 const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
@@ -63,16 +71,13 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
   onCancel,
 }) => {
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   const {
     register,
     control,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting, dirtyFields },
+    formState: { errors, isSubmitting, isValid, isDirty },
     watch,
   } = useForm<ProgramFormInputs>({
     defaultValues: { title: "", description: "", exercises: [] },
@@ -93,9 +98,9 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
         masterExerciseId:
           (ex as any).masterExerciseId || ex.id || `imported_ex_${index}`,
         name: ex.name,
-        sets: ex.sets || 3,
-        reps: ex.reps || "8-12",
-        restInterval: ex.restInterval || 60,
+        sets: ex.sets ?? 3,
+        reps: ex.reps ?? "8-12",
+        restInterval: ex.restInterval ?? 60,
         localId: (ex as any).localId || Math.random().toString(36).substr(2, 9),
       }));
       reset({
@@ -108,8 +113,6 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
     }
   }, [program, reset]);
 
-  // Your onSubmit handler is perfectly written and needs no changes.
-  // It now calls the real saveProgram function from the service.
   const onSubmitHandler: SubmitHandler<ProgramFormInputs> = async (data) => {
     const exercisesToSave: ProgramExerciseData[] = data.exercises.map((ex) => ({
       id: ex.masterExerciseId,
@@ -126,20 +129,9 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
     };
     try {
       const saved = await saveProgram(programDataToSave);
-      setToastMessage("Program saved successfully!");
-      setToastType("success");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
       onSave(saved);
     } catch (error) {
-      setToastMessage(
-        `Error: ${
-          error instanceof Error ? error.message : "Could not save program"
-        }`
-      );
-      setToastType("error");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 4000);
+      console.error("Failed to save program", error);
     }
   };
 
@@ -159,98 +151,86 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
   };
 
   const textInputClass = (hasError: boolean) =>
-    `w-full px-3 py-2 border rounded-md bg-transparent text-brand-text placeholder-brand-text-muted/70 focus:outline-none focus:ring-1 shadow-sm ${
+    `w-full appearance-none rounded-lg border bg-brand-background/50 py-2.5 px-4 text-base text-brand-text shadow-sm transition-colors placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-1 ${
       hasError
-        ? "border-error focus:border-error focus:ring-error"
-        : "border-brand-border focus:border-brand-primary focus:ring-brand-primary"
+        ? "border-error/50 ring-error/50 focus:border-error focus:ring-error"
+        : "border-brand-border/20 ring-brand-primary/50 focus:border-brand-primary focus:ring-brand-primary"
     }`;
+
+  const hasUnsavedChanges = isDirty;
 
   return (
     <>
-      <AnimatePresence mode="wait">
-        {!isExerciseModalOpen && (
-          <motion.form
-            key="program-editor-form"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15, transition: { duration: 0.15 } }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            onSubmit={handleSubmit(onSubmitHandler)}
-            className="space-y-4 h-full flex flex-col"
-          >
-            <div className="flex-shrink-0 space-y-3 pb-2">
-              <div>
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-brand-text mb-1"
-                >
-                  Program Title
-                </label>
-                <input
-                  id="title"
-                  type="text"
-                  {...register("title", {
-                    validate: (v) => validateRequired(v, "Title"),
-                  })}
-                  className={textInputClass(!!errors.title)}
-                  placeholder="e.g., My Awesome Strength Plan"
-                />
-                {errors.title && (
-                  <p className="mt-1 text-xs text-error">
-                    {errors.title.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label
-                  htmlFor="description"
-                  className="block text-sm font-medium text-brand-text mb-1"
-                >
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  rows={2}
-                  {...register("description")}
-                  className={textInputClass(!!errors.description)}
-                  placeholder="A short description of this program's focus..."
-                />
-                {errors.description && (
-                  <p className="mt-1 text-xs text-error">
-                    {errors.description.message}
-                  </p>
-                )}
-              </div>
+      <motion.form
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        onSubmit={handleSubmit(onSubmitHandler)}
+        className="flex h-full flex-col p-1"
+      >
+        <div className="flex-grow space-y-6 overflow-y-auto p-4 pr-5 custom-scrollbar-thin">
+          {/* Program Details Section */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold text-brand-text">Details</h3>
+            <div>
+              <label
+                htmlFor="title"
+                className="mb-1.5 block text-sm font-medium text-brand-text-muted"
+              >
+                Program Title
+              </label>
+              <input
+                id="title"
+                type="text"
+                {...register("title", {
+                  validate: (v) => validateRequired(v, "Title"),
+                })}
+                className={textInputClass(!!errors.title)}
+                placeholder="e.g., Ultimate Strength"
+              />
+              {errors.title && (
+                <p className="mt-1 text-xs text-error">
+                  {errors.title.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label
+                htmlFor="description"
+                className="mb-1.5 block text-sm font-medium text-brand-text-muted"
+              >
+                Description
+              </label>
+              <textarea
+                id="description"
+                rows={2}
+                {...register("description")}
+                className={textInputClass(!!errors.description)}
+                placeholder="A short description of this program's purpose..."
+              />
+            </div>
+          </div>
+
+          {/* Exercises Section */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold text-brand-text">
+                Exercises ({fields.length})
+              </h3>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setIsExerciseModalOpen(true)}
+                leftIcon={<PlusCircleIcon className="h-5 w-5" />}
+              >
+                Add Exercises
+              </Button>
             </div>
 
-            <div className="flex-grow overflow-y-auto space-y-3 pr-1.5 custom-scrollbar-thin py-1 -mr-1.5">
-              <div className="flex justify-between items-center mb-2 sticky top-0 bg-brand-card py-2 z-10 border-b border-brand-border/50 px-1">
-                <h4 className="text-base sm:text-lg font-semibold text-brand-text">
-                  Exercises ({fields.length})
-                </h4>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsExerciseModalOpen(true)}
-                  leftIcon={<PlusCircleIcon className="h-4 w-4" />}
-                >
-                  Add
-                </Button>
-              </div>
-              <AnimatePresence initial={false}>
-                {fields.length === 0 && (
-                  <motion.div
-                    key="no-exercises-msg"
-                    variants={listItemVariants}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    className="text-center text-brand-text-muted py-6 italic text-sm"
-                  >
-                    No exercises. Add from library to build your program.
-                  </motion.div>
-                )}
+            <div className="space-y-3">
+              <AnimatePresence>
                 {fields.map((field, index) => (
                   <motion.div
                     key={field.localId}
@@ -259,31 +239,50 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
                     animate="animate"
                     exit="exit"
                     layout
-                    className="p-3 border border-brand-border/50 rounded-lg bg-brand-card/40 shadow relative"
                   >
                     <ExerciseInputRow
-                      exerciseData={field}
                       index={index}
+                      exerciseData={field}
                       register={register}
-                      errors={
-                        errors.exercises?.[index] as
-                          | FieldErrors<ProgramExerciseFormFields>
-                          | undefined
-                      }
+                      errors={errors.exercises?.[index]}
                       onRemove={() => remove(index)}
-                      canRemove={true}
+                      canRemove={fields.length > 0}
                     />
                   </motion.div>
                 ))}
               </AnimatePresence>
-            </div>
 
-            <div className="flex-shrink-0 flex justify-end space-x-3 pt-3 border-t border-brand-border mt-auto">
+              {fields.length === 0 && (
+                <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand-border/20 bg-brand-background/20 py-12 text-center">
+                  <RectangleStackIcon className="h-12 w-12 text-brand-primary/30" />
+                  <h4 className="mt-4 font-semibold text-brand-text">
+                    No exercises yet
+                  </h4>
+                  <p className="mt-1 text-sm text-brand-text-muted">
+                    Add exercises to build your program.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 rounded-b-lg border-t border-brand-border/20 bg-brand-background/50 p-4">
+          <div className="flex justify-between items-center">
+            <p
+              className={`text-xs transition-opacity duration-300 ${
+                hasUnsavedChanges ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              Unsaved changes
+            </p>
+            <div className="flex gap-3">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={onCancel}
-                size="md"
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
@@ -291,58 +290,31 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
                 type="submit"
                 variant="primary"
                 isLoading={isSubmitting}
-                size="md"
-                disabled={
-                  isSubmitting ||
-                  (!program &&
-                    Object.keys(dirtyFields).length === 0 &&
-                    fields.length === 0)
-                }
+                disabled={isSubmitting || !isValid || !isDirty}
               >
-                {program?.id ? "Update Program" : "Save Program"}
+                {isSubmitting
+                  ? "Saving..."
+                  : program
+                  ? "Save Changes"
+                  : "Create Program"}
               </Button>
             </div>
-          </motion.form>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      </motion.form>
 
-      <ExerciseSelectionModal
-        isOpen={isExerciseModalOpen}
-        onClose={() => setIsExerciseModalOpen(false)}
-        onExercisesSelected={handleExercisesSelectedFromModal}
-        alreadySelectedIds={currentProgramExercises.map(
-          (ex) => ex.masterExerciseId
-        )}
-      />
-
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, x: "-50%" }}
-            animate={{ opacity: 1, y: 0, x: "-50%" }}
-            exit={{
-              opacity: 0,
-              y: 20,
-              x: "-50%",
-              transition: { duration: 0.2 },
-            }}
-            className={`fixed bottom-5 left-1/2 transform -translate-x-1/2 p-3 sm:p-4 rounded-lg shadow-lg text-sm sm:text-base
-                        ${
-                          toastType === "error"
-                            ? "bg-error text-white"
-                            : "bg-success text-white"
-                        }`}
-          >
-            <div className="flex items-center">
-              {isSubmitting ? (
-                <Spinner size="sm" colorClass="text-white" className="mr-2" />
-              ) : null}{" "}
-              {toastMessage}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isExerciseModalOpen && (
+        <ExerciseSelectionModal
+          isOpen={isExerciseModalOpen}
+          onClose={() => setIsExerciseModalOpen(false)}
+          onExercisesSelected={handleExercisesSelectedFromModal}
+          alreadySelectedIds={currentProgramExercises.map(
+            (ex) => ex.masterExerciseId
+          )}
+        />
+      )}
     </>
   );
 };
+
 export default ProgramEditorForm;

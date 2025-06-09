@@ -1,11 +1,19 @@
-// /src/components/Workout/ExerciseLogRow.tsx (Corrected & Memoized)
+// /src/components/Workout/ExerciseLogRow.tsx
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Exercise } from "../../types/data";
 import Button from "../UI/Button";
-import { PlayIcon, CheckIcon } from "@heroicons/react/24/solid";
+import {
+  ClockIcon,
+  CheckIcon,
+  PlusIcon,
+  XMarkIcon,
+  TrophyIcon,
+  HashtagIcon,
+} from "@heroicons/react/24/outline";
 
 interface LoggedSetData {
+  id: string; // Add id for proper keying in animations
   reps: number | null;
   weight: number | null;
   completed: boolean;
@@ -16,137 +24,190 @@ interface ExerciseLogRowProps {
   loggedSets: LoggedSetData[];
   onSetChange: (
     setIndex: number,
-    field: keyof LoggedSetData,
+    field: keyof Omit<LoggedSetData, "id">,
     value: string | number | boolean
   ) => void;
-  onTimerStart: (durationSeconds: number) => void;
+  onTimerStart: () => void;
   isTimerActive: boolean;
+  onAddSet: () => void;
+  onRemoveSet: (setIndex: number) => void;
 }
 
-// NOTE: Component logic remains identical as it was functionally correct.
 const ExerciseLogRowComponent: React.FC<ExerciseLogRowProps> = ({
   exercise,
   loggedSets,
   onSetChange,
   onTimerStart,
   isTimerActive,
+  onAddSet,
+  onRemoveSet,
 }) => {
   const handleSetCompleteToggle = (setIndex: number) => {
     const currentlyCompleted = loggedSets[setIndex].completed;
     onSetChange(setIndex, "completed", !currentlyCompleted);
     if (!currentlyCompleted && !isTimerActive) {
-      onTimerStart(exercise.restInterval);
+      onTimerStart();
     }
   };
 
-  const inputStyle = (completed: boolean) =>
-    `w-full text-sm px-2 py-1.5 border rounded-md bg-transparent focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary
-     ${completed ? "border-brand-border opacity-70" : "border-brand-border"}
-     disabled:opacity-50 disabled:cursor-not-allowed`;
+  const SetInput: React.FC<{
+    value: number | null;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    placeholder: string;
+    disabled: boolean;
+    icon: React.ReactNode;
+  }> = ({ value, onChange, placeholder, disabled, icon }) => (
+    <div className="relative flex items-center">
+      <span className="absolute left-3 text-brand-text-muted pointer-events-none">
+        {icon}
+      </span>
+      <input
+        type="number"
+        placeholder={placeholder}
+        value={value ?? ""}
+        onChange={onChange}
+        disabled={disabled}
+        className="w-full bg-brand-background/40 border-2 border-brand-border/30 rounded-lg py-2 pl-9 pr-2 text-center text-brand-text focus:ring-brand-primary focus:border-brand-primary transition-colors duration-300 placeholder:text-brand-text-muted/50 disabled:bg-brand-background/20 disabled:text-brand-text-muted"
+      />
+    </div>
+  );
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: "easeOut" },
+    },
+  };
+
+  const setVariants = {
+    hidden: { opacity: 0, height: 0, y: -10 },
+    visible: {
+      opacity: 1,
+      height: "auto",
+      y: 0,
+      transition: { type: "spring", stiffness: 300, damping: 30 },
+    },
+    exit: {
+      opacity: 0,
+      height: 0,
+      y: -10,
+      transition: { duration: 0.2 },
+    },
+  };
 
   return (
-    <motion.div className="p-4 border border-brand-border rounded-lg bg-brand-card/50">
-      <div className="flex justify-between items-center mb-3">
-        <div>
-          <h4 className="text-lg font-semibold text-brand-text">
-            {exercise.name}
-          </h4>
-          <p className="text-xs text-brand-text-muted">
-            Target: {exercise.sets} sets of {exercise.reps} reps,{" "}
-            {exercise.restInterval}s rest
-          </p>
-        </div>
-        {!isTimerActive && !loggedSets.every((s) => s.completed) && (
+    <motion.div
+      className="bg-brand-card/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-lg overflow-hidden"
+      variants={cardVariants}
+      layout
+    >
+      <div className="p-4 md:p-5">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h4 className="text-xl font-bold text-brand-text tracking-tight">
+              {exercise.name}
+            </h4>
+            <p className="text-xs text-brand-text-muted uppercase tracking-wider font-medium">
+              Target: {exercise.sets} sets of {exercise.reps} reps
+            </p>
+          </div>
           <Button
             size="sm"
-            onClick={() => onTimerStart(exercise.restInterval)}
-            leftIcon={<PlayIcon className="h-4 w-4" />}
-            disabled={
-              isTimerActive ||
-              loggedSets.some(
-                (s, idx, arr) =>
-                  s.completed && arr[idx + 1] && !arr[idx + 1].completed
-              )
-            }
+            variant="ghost"
+            onClick={onTimerStart}
+            leftIcon={<ClockIcon className="h-4 w-4" />}
+            disabled={isTimerActive}
+            className="!text-brand-text-muted hover:!bg-brand-primary/20 hover:!text-brand-primary"
           >
-            Start Rest
+            {exercise.restInterval}s Rest
           </Button>
-        )}
-      </div>
+        </div>
 
-      <div className="space-y-3">
-        {loggedSets.map((set, setIndex) => {
-          const setCompleted = set.completed;
-          return (
-            <div
-              key={setIndex}
-              className={`grid grid-cols-12 gap-2 items-center p-2 rounded-md 
-                          transition-colors duration-100 ease-in-out
-                          ${
-                            setCompleted
-                              ? "opacity-60 line-through"
-                              : "opacity-100"
-                          }
-                          ${
-                            setCompleted
-                              ? "bg-success/10"
-                              : "bg-transparent hover:bg-brand-card/30"
-                          }`}
-            >
-              <span className="col-span-1 text-sm font-medium text-brand-text-muted">
-                Set {setIndex + 1}
-              </span>
-              <div className="col-span-4 md:col-span-3">
-                <input
-                  type="number"
-                  id={`ex-${exercise.id}-set-${setIndex}-reps`}
-                  placeholder="Reps"
-                  value={set.reps ?? ""}
-                  onChange={(e) =>
-                    onSetChange(setIndex, "reps", e.target.value)
-                  }
-                  disabled={setCompleted}
-                  className={inputStyle(setCompleted)}
-                />
-              </div>
-              <div className="col-span-4 md:col-span-3">
-                <input
-                  type="number"
-                  id={`ex-${exercise.id}-set-${setIndex}-weight`}
-                  placeholder="Weight"
-                  value={set.weight ?? ""}
-                  step="0.25"
-                  onChange={(e) =>
-                    onSetChange(setIndex, "weight", e.target.value)
-                  }
-                  disabled={setCompleted}
-                  className={inputStyle(setCompleted)}
-                />
-              </div>
-              <div className="col-span-3 md:col-span-2 flex justify-center">
-                <button
-                  onClick={() => handleSetCompleteToggle(setIndex)}
-                  className={`p-1.5 rounded-full transition-colors duration-200 ease-in-out flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 
-                              ${
-                                setCompleted
-                                  ? "bg-success text-white hover:bg-success/90 focus-visible:ring-success"
-                                  : "bg-brand-secondary/30 text-brand-text hover:bg-brand-secondary/50 focus-visible:ring-brand-secondary"
-                              }`}
-                  title={setCompleted ? "Mark Incomplete" : "Mark Complete"}
-                >
-                  <CheckIcon className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+        <div className="space-y-3">
+          <AnimatePresence initial={false}>
+            {loggedSets.map((set, setIndex) => (
+              <motion.div
+                key={set.id}
+                variants={setVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                layout
+                className={`grid grid-cols-12 gap-x-2 sm:gap-x-3 items-center p-2 rounded-lg transition-colors duration-300
+                ${
+                  set.completed
+                    ? "bg-brand-primary/10"
+                    : "bg-brand-background/20"
+                }`}
+              >
+                <span className="col-span-1 text-sm font-semibold text-brand-text-muted text-center">
+                  {setIndex + 1}
+                </span>
+                <div className="col-span-4 sm:col-span-4">
+                  <SetInput
+                    placeholder="Reps"
+                    value={set.reps}
+                    onChange={(e) =>
+                      onSetChange(setIndex, "reps", e.target.value)
+                    }
+                    disabled={set.completed}
+                    icon={<HashtagIcon className="h-4 w-4" />}
+                  />
+                </div>
+                <div className="col-span-4 sm:col-span-4">
+                  <SetInput
+                    placeholder="kg"
+                    value={set.weight}
+                    onChange={(e) =>
+                      onSetChange(setIndex, "weight", e.target.value)
+                    }
+                    disabled={set.completed}
+                    icon={<TrophyIcon className="h-4 w-4" />}
+                  />
+                </div>
+                <div className="col-span-3 sm:col-span-3 flex justify-center items-center gap-1">
+                  <button
+                    onClick={() => handleSetCompleteToggle(setIndex)}
+                    className={`p-2 rounded-full transition-all duration-200 ease-in-out flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ring-offset-transparent
+                    ${
+                      set.completed
+                        ? "bg-brand-primary text-white hover:bg-brand-primary/80 focus-visible:ring-brand-primary"
+                        : "bg-brand-background/50 text-brand-text-muted hover:bg-brand-background/80 hover:text-white focus-visible:ring-white"
+                    }`}
+                    title={set.completed ? "Mark Incomplete" : "Mark Complete"}
+                  >
+                    <CheckIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => onRemoveSet(setIndex)}
+                    className="p-2 rounded-full text-brand-text-muted hover:bg-error/20 hover:text-error transition-colors"
+                    title="Remove Set"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <Button
+            onClick={onAddSet}
+            variant="ghost"
+            className="w-full !text-brand-text-muted hover:!bg-brand-primary/20 hover:!text-brand-primary"
+            leftIcon={<PlusIcon className="h-4 w-4" />}
+          >
+            Add Set
+          </Button>
+        </div>
       </div>
     </motion.div>
   );
 };
 
-// THE FIX: Wrap the component in React.memo to prevent unnecessary re-renders when other
-// rows in the list are updated. This is a critical performance optimization.
 const ExerciseLogRow = React.memo(ExerciseLogRowComponent);
 
 export default ExerciseLogRow;

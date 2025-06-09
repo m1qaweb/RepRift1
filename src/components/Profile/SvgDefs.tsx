@@ -3,8 +3,54 @@
 import React, { memo } from "react";
 import { MUSCLE_DATA, ALL_MUSCLE_GROUPS_UI } from "./AnatomicalData_Hyper";
 
+// This is a new, more advanced lighting system for the anatomical figure.
+// It uses a three-layer gradient approach to create a more realistic 3D effect.
+const ADVANCED_LIGHTING_DEFS = {
+  // A bright, focused light source to create a "hotspot" effect.
+  hotspot: (
+    <radialGradient id="hotspot-light" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stopColor="rgba(255, 255, 255, 0.4)" />
+      <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
+    </radialGradient>
+  ),
+  // A softer, more diffuse light source that provides base color and contouring.
+  fill: (
+    <linearGradient id="fill-light" gradientTransform="rotate(45)">
+      <stop offset="0%" stopColor="rgba(220, 220, 255, 0.1)" />
+      <stop offset="100%" stopColor="rgba(200, 200, 255, 0.3)" />
+    </linearGradient>
+  ),
+  // A cool, ambient light that simulates light from the surrounding environment.
+  ambient: (
+    <radialGradient id="ambient-light" cx="50%" cy="50%" r="70%">
+      <stop offset="40%" stopColor="rgba(180, 180, 220, 0)" />
+      <stop offset="100%" stopColor="rgba(180, 180, 220, 0.2)" />
+    </radialGradient>
+  ),
+  // Simulates light catching the edges of the muscles, enhancing the 3D effect.
+  rim: (
+    <filter id="rim-light-filter">
+      <feMorphology
+        operator="dilate"
+        radius="1"
+        in="SourceAlpha"
+        result="dilated"
+      />
+      <feGaussianBlur in="dilated" stdDeviation="1" result="blurred" />
+      <feFlood floodColor="rgba(200, 220, 255, 0.4)" result="flood" />
+      <feComposite in="flood" in2="blurred" operator="in" result="rim" />
+      <feComposite in="rim" in2="SourceGraphic" operator="over" />
+    </filter>
+  ),
+};
+
 const SvgDefs = memo(() => (
   <defs>
+    {/* ADVANCED LIGHTING */}
+    {Object.values(ADVANCED_LIGHTING_DEFS).map((def, i) => (
+      <React.Fragment key={i}>{def}</React.Fragment>
+    ))}
+
     {/* CREATIVE ENHANCEMENT: Glow filter for hover/focus */}
     <filter
       id="outline-glow-filter"
@@ -118,14 +164,18 @@ const SvgDefs = memo(() => (
       <linearGradient
         id={`${group}-color`}
         key={group}
-        gradientTransform="rotate(45)"
+        gradientTransform="rotate(50)"
       >
         <stop
           offset="0%"
           stopColor={`var(${MUSCLE_DATA[group].colorVar})`}
-          stopOpacity="0.7"
+          stopOpacity="0.8"
         />
-        <stop offset="100%" stopColor={`var(${MUSCLE_DATA[group].colorVar})`} />
+        <stop
+          offset="80%"
+          stopColor={`var(${MUSCLE_DATA[group].colorVar})`}
+          stopOpacity="1.0"
+        />
       </linearGradient>
     ))}
 

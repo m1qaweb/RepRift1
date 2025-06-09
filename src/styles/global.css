@@ -15,10 +15,11 @@
   --color-text-muted-rgb: 82, 82, 82;
   --color-primary: #0a0a0a;
   --color-primary-rgb: 10, 10, 10;
+  --color-primary-content: #ffffff; /* Text on primary background */
+  --color-primary-content-rgb: 255, 255, 255; /* Text on primary background */
   --color-secondary: #737373;
   --color-secondary-rgb: 115, 115, 115;
   --color-accent: #0a0a0a;
-  --color-accent-rgb: 10, 10, 10;
   --color-border: #e5e5e5;
   --color-border-rgb: 229, 229, 229;
   --special-card-gradient-from: 10, 10, 10;
@@ -38,16 +39,17 @@
     0 2px 4px -2px rgba(0, 0, 0, 0.1);
   --color-muscle-base: rgb(var(--color-text-rgb) / 0.1);
   --color-muscle-highlight: rgb(var(--color-primary-rgb));
+  --color-muscle-exercised: #ff0000; /* A more vibrant red */
 
   --color-muscle-chest: #fc9c9c;
-  --color-muscle-back: #fb8aff;
-  --color-muscle-shoulders: #a02323;
-  --color-muscle-biceps: #87ffb9;
-  --color-muscle-triceps: #3498db;
-  --color-muscle-legs: #9290ff;
-  --color-muscle-glutes: #ffc5c5;
-  --color-muscle-core: #0400ff;
-  --color-muscle-arms: #32e4d5;
+  --color-muscle-back: #fc9c9c;
+  --color-muscle-shoulders: #fc9c9c;
+  --color-muscle-biceps: #fc9c9c;
+  --color-muscle-triceps: #fc9c9c;
+  --color-muscle-legs: #fc9c9c;
+  --color-muscle-glutes: #fc9c9c;
+  --color-muscle-core: #fc9c9c;
+  --color-muscle-arms: #fc9c9c;
   --font-primary: "Poppins", "Inter", sans-serif;
 }
 
@@ -63,10 +65,11 @@
   --color-text-muted-rgb: 163, 163, 163;
   --color-primary: #fafafa;
   --color-primary-rgb: 250, 250, 250;
+  --color-primary-content: #0a0a0a; /* Text on primary background */
+  --color-primary-content-rgb: 10, 10, 10; /* Text on primary background */
   --color-secondary: #525252;
   --color-secondary-rgb: 82, 82, 82;
   --color-accent: #fafafa;
-  --color-accent-rgb: 250, 250, 250;
   --color-border: #262626;
   --color-border-rgb: 38, 38, 38;
   --special-card-gradient-from: 20, 20, 20;
@@ -211,4 +214,66 @@ body {
   75% {
     transform: translate(-5%, 5%);
   }
+}
+
+/* src/components/Profile/AdvancedStyles.css */
+
+/* Keyframe animation for the scanline effect */
+@keyframes scan {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* The main container for the holographic panel */
+.holo-panel {
+  position: relative;
+  background-color: rgba(16, 19, 28, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Grid pattern overlay */
+.holo-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+      to right,
+      rgba(128, 128, 128, 0.07) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(128, 128, 128, 0.07) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(
+    ellipse 80% 50% at 50% 0%,
+    #000 70%,
+    transparent 110%
+  );
+}
+
+/* Scanline effect overlay */
+.holo-panel::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    0deg,
+    transparent 50%,
+    rgba(100, 200, 255, 0.025) 50%
+  );
+  background-size: 100% 4px;
+  animation: scan 10s linear infinite;
+}
+
+/* Child content wrapper */
+.holo-panel-content {
+  position: relative;
+  height: 100%;
 }

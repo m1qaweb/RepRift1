@@ -10,6 +10,7 @@ import {
 } from "./AnatomicalData_Hyper";
 import SvgDefs from "./SvgDefs";
 import { type UIGroup, ANATOMICAL_GRAPH } from "./AnatomicalGraph";
+import { useWorkout } from "../../contexts/WorkoutContext";
 
 interface AnatomicalFigureHyperProps {
   view: "front" | "back";
@@ -25,6 +26,7 @@ interface MusclePartProps {
   groupName: UIGroup;
   isFocused: boolean;
   isHovered: boolean;
+  isExercised: boolean;
   activation: number;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -36,12 +38,15 @@ const MusclePart: FC<MusclePartProps> = ({
   groupName,
   isFocused,
   isHovered,
+  isExercised,
   activation,
   onMouseEnter,
   onMouseLeave,
   onClick,
 }) => {
-  const fillUrl = `url(#${groupName}-color)`;
+  const fillUrl = isExercised
+    ? "var(--color-muscle-exercised)"
+    : `url(#${groupName}-color)`;
   const textureUrl = `url(#${data.textureId})`;
 
   let state: "dormant" | "active" | "hover" | "focus" = "dormant";
@@ -66,12 +71,24 @@ const MusclePart: FC<MusclePartProps> = ({
         fill={fillUrl}
         stroke="rgba(255, 255, 255, 0.1)"
         strokeWidth={0.25}
+        style={{ filter: "url(#rim-light-filter)" }}
       />
       <path
         d={data.outline}
         fill={textureUrl}
         style={{ mixBlendMode: "overlay" }}
         opacity={0.1 + activation * 0.25}
+      />
+      <path d={data.outline} fill="url(#hotspot-light)" opacity={0.8} />
+      <path
+        d={data.outline}
+        fill="url(#fill-light)"
+        style={{ mixBlendMode: "overlay" }}
+      />
+      <path
+        d={data.outline}
+        fill="url(#ambient-light)"
+        style={{ mixBlendMode: "soft-light" }}
       />
     </motion.g>
   );
@@ -101,6 +118,8 @@ export const AnatomicalFigureHyper: FC<AnatomicalFigureHyperProps> = ({
     [view]
   );
 
+  const { exercisedMuscleGroups } = useWorkout();
+
   const handleFocus = (group: UIGroup) => {
     onFocus(focusedUiGroup === group ? null : group);
   };
@@ -129,6 +148,7 @@ export const AnatomicalFigureHyper: FC<AnatomicalFigureHyperProps> = ({
             activation={activeMuscleGroups.get(uiGroup) || 0}
             isFocused={focusedUiGroup === uiGroup}
             isHovered={hoveredUiGroup === uiGroup}
+            isExercised={exercisedMuscleGroups.includes(uiGroup)}
             onMouseEnter={() => onHover(uiGroup)}
             onMouseLeave={() => onHover(null)}
             onClick={() => handleFocus(uiGroup)}

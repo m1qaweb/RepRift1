@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnimatePresence, motion } from "framer-motion";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WorkoutProvider } from "./contexts/WorkoutContext";
 
 import Navbar from "./components/Layout/Navbar";
 
@@ -243,7 +244,9 @@ const App: React.FC = () => {
       <Router>
         <ThemeProvider>
           <AuthProvider>
-            <AppContent />
+            <WorkoutProvider>
+              <AppContent />
+            </WorkoutProvider>
           </AuthProvider>
         </ThemeProvider>
       </Router>

@@ -14,7 +14,8 @@ import Modal from "../components/UI/Modal";
 import {
   PlusCircleIcon,
   ExclamationTriangleIcon,
-} from "@heroicons/react/24/solid";
+  RectangleStackIcon,
+} from "@heroicons/react/24/outline";
 import Spinner from "../components/UI/Spinner";
 
 const ProgramsListPage: React.FC = () => {
@@ -120,14 +121,18 @@ const ProgramsListPage: React.FC = () => {
 
   const programsGridVariants = {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+    },
   };
+
   const contentWrapperVariants = {
-    initial: { opacity: 0, y: 20 },
+    initial: { opacity: 0, y: 15 },
     animate: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.5, ease: "easeOut" },
+      transition: { duration: 0.4, ease: "easeOut" },
     },
   };
 
@@ -141,66 +146,74 @@ const ProgramsListPage: React.FC = () => {
 
   return (
     <motion.div
-      className="py-6 sm:py-8"
+      className="container mx-auto px-4 py-6 sm:py-10"
       initial="initial"
       animate="animate"
       variants={contentWrapperVariants}
     >
-      <div className="bg-brand-card rounded-xl shadow-xl p-4 sm:p-6 lg:p-8">
-        <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-brand-text mb-4 sm:mb-0">
-            Your Workout Programs
-          </h1>
-          <Button
-            variant="primary"
-            onClick={handleOpenModalForNew}
-            leftIcon={<PlusCircleIcon className="h-5 w-5" />}
-            size="md"
-          >
-            Create Program
-          </Button>
-        </header>
+      <header className="text-center sm:text-left mb-8 sm:mb-12">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand-text tracking-tight">
+          <span className="bg-gradient-to-r from-brand-primary to-brand-accent bg-clip-text text-transparent">
+            Workout Programs
+          </span>
+        </h1>
+        <p className="mt-2 sm:mt-3 text-base sm:text-lg text-brand-text-muted max-w-2xl mx-auto sm:mx-0">
+          Curate and manage your training routines.
+        </p>
+      </header>
 
-        <AnimatePresence mode="wait">
-          {programs.length > 0 ? (
-            <motion.div
-              key="programs-grid"
-              variants={programsGridVariants}
-              initial="hidden"
-              animate="visible"
-              exit={{ opacity: 0 }}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-5 sm:gap-6"
-            >
-              {programs.map((program) => (
-                <ProgramCard
-                  key={program.id}
-                  program={program}
-                  onEditClick={handleOpenModalForEdit}
-                  onDeleteClick={handleOpenDeleteModal}
-                />
-              ))}
-            </motion.div>
-          ) : (
-            !isLoading && (
-              <motion.div
-                key="no-programs"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
-                exit={{ opacity: 0, y: -10 }}
-                className="text-center py-12 sm:py-16"
-              >
-                <h2 className="text-xl font-semibold text-brand-text mb-2">
-                  No Workout Programs Found
-                </h2>
-                <p className="text-sm text-brand-text-muted max-w-sm mx-auto mb-6">
-                  Start by creating a new program tailored to your fitness
-                  goals.
-                </p>
-              </motion.div>
-            )
-          )}
-        </AnimatePresence>
+      <div className="mb-8 flex justify-center sm:justify-end">
+        <Button
+          variant="primary"
+          onClick={handleOpenModalForNew}
+          leftIcon={<PlusCircleIcon className="h-5 w-5" />}
+          size="md"
+          className="shadow-lg shadow-brand-primary/20 hover:shadow-xl hover:shadow-brand-primary/30 transform hover:-translate-y-0.5 transition-all duration-300"
+        >
+          Create New Program
+        </Button>
       </div>
+
+      <AnimatePresence mode="wait">
+        {programs.length > 0 ? (
+          <motion.div
+            key="programs-grid"
+            variants={programsGridVariants}
+            initial="hidden"
+            animate="visible"
+            exit={{ opacity: 0 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6"
+          >
+            {programs.map((program) => (
+              <ProgramCard
+                key={program.id}
+                program={program}
+                onEditClick={handleOpenModalForEdit}
+                onDeleteClick={handleOpenDeleteModal}
+              />
+            ))}
+          </motion.div>
+        ) : (
+          !isLoading && (
+            <motion.div
+              key="no-programs"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
+              exit={{ opacity: 0, y: -10 }}
+              className="text-center py-16 sm:py-20 px-4 bg-brand-card/30 rounded-2xl border border-brand-border/10"
+            >
+              <RectangleStackIcon className="h-16 w-16 mx-auto text-brand-primary/20 mb-5" />
+              <h2 className="text-xl sm:text-2xl font-bold text-brand-text mb-2">
+                Your Program Library is Empty
+              </h2>
+              <p className="text-sm sm:text-base text-brand-text-muted max-w-md mx-auto mb-7">
+                Create your first program to get started. It's the first step
+                towards a more structured workout plan.
+              </p>
+            </motion.div>
+          )
+        )}
+      </AnimatePresence>
 
       {isEditorModalOpen && (
         <Modal
@@ -209,7 +222,7 @@ const ProgramsListPage: React.FC = () => {
           title={editingProgram ? "Edit Program" : "Create New Workout Program"}
           size="4xl"
           hideDefaultFooter
-          panelClassName="dark:bg-[rgb(var(--color-card-rgb)/0.95)] backdrop-blur-lg"
+          panelClassName="dark:bg-brand-card/80 bg-brand-card-light/95 backdrop-blur-xl"
           preventCloseOnBackdropClick={true}
         >
           <ProgramEditorForm
@@ -226,11 +239,11 @@ const ProgramsListPage: React.FC = () => {
           onClose={handleCloseDeleteModal}
           title="Confirm Deletion"
           size="md"
-          panelClassName="dark:bg-[rgb(var(--color-card-rgb)/0.95)] backdrop-blur-lg"
+          panelClassName="dark:bg-brand-card/80 bg-brand-card-light/95 backdrop-blur-xl border border-brand-border/20"
           preventCloseOnBackdropClick={true}
           hideDefaultFooter={true}
           customFooter={
-            <div className="flex justify-end space-x-3">
+            <div className="flex justify-end gap-3 p-4 bg-brand-background/50 rounded-b-lg">
               <Button
                 variant="ghost"
                 onClick={handleCloseDeleteModal}
@@ -239,7 +252,7 @@ const ProgramsListPage: React.FC = () => {
                 Cancel
               </Button>
               <Button
-                variant="primary" // Changed for visibility
+                variant="danger"
                 onClick={handleConfirmDeleteProgram}
                 isLoading={isDeleting}
                 disabled={isDeleting}
@@ -249,9 +262,9 @@ const ProgramsListPage: React.FC = () => {
             </div>
           }
         >
-          <div className="flex items-start">
-            <ExclamationTriangleIcon className="h-10 w-10 text-error mr-4 flex-shrink-0" />
-            <div>
+          <div className="p-4 flex items-start">
+            <ExclamationTriangleIcon className="h-12 w-12 text-error mr-4 flex-shrink-0" />
+            <div className="pt-1">
               <p className="text-brand-text">
                 Are you sure you want to delete the program:{" "}
                 <strong className="text-brand-text font-semibold">
@@ -260,7 +273,7 @@ const ProgramsListPage: React.FC = () => {
                 ?
               </p>
               <p className="text-sm text-brand-text-muted mt-2">
-                This action cannot be undone.
+                This action is permanent and cannot be undone.
               </p>
               {deleteError && (
                 <p className="text-xs text-error mt-3 bg-error/10 p-2 rounded-md">

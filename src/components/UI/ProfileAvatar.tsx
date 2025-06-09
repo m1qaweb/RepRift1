@@ -1,7 +1,7 @@
 // /src/components/UI/ProfileAvatar.tsx
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CameraIcon } from "@heroicons/react/24/solid";
+import { CameraIcon } from "@heroicons/react/24/outline";
 
 interface ProfileAvatarProps {
   avatarUrl?: string | null;
@@ -22,14 +22,40 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const triggerAvatarUpload = () => fileInputRef.current?.click();
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="relative group mx-auto w-36 h-36 sm:w-48 sm:h-48 flex-shrink-0">
+    <motion.div
+      className="relative group mx-auto w-36 h-36 sm:w-48 sm:h-48 flex-shrink-0"
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+    >
+      {/* Background Glow */}
       <motion.div
-        whileHover={editMode ? { scale: 1.05 } : {}}
-        className="absolute inset-0 rounded-full bg-gradient-to-tr from-brand-primary/50 to-brand-accent/40 blur-lg transition-all duration-300 group-hover:blur-xl"
+        className="absolute inset-0 rounded-full bg-gradient-to-tr from-brand-primary/50 to-brand-accent/40 blur-lg transition-all duration-300"
+        animate={{
+          scale: editMode && isHovered ? 1.1 : 1,
+          opacity: editMode && isHovered ? 0.8 : 0.6,
+        }}
         aria-hidden="true"
       />
+      {/* Interactive Glowing Ring */}
+      <AnimatePresence>
+        {editMode && isHovered && (
+          <motion.div
+            className="absolute -inset-1 rounded-full border-2 border-brand-primary/80"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{
+              scale: 1,
+              opacity: 1,
+              transition: { type: "spring", stiffness: 200, damping: 15 },
+            }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
       <motion.img
         key={avatarUrl}
         src={avatarUrl || defaultAvatar}
@@ -41,6 +67,7 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
           opacity: 1,
           transition: { delay: 0.1, type: "spring", stiffness: 180 },
         }}
+        whileHover={editMode ? { scale: 1.05 } : {}}
       />
       <AnimatePresence>
         {editMode && (
@@ -48,14 +75,14 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
             onClick={triggerAvatarUpload}
             disabled={isSaving}
             title="Change Avatar"
-            className="absolute bottom-1 right-1 bg-brand-primary text-white p-3.5 rounded-full shadow-lg hover:bg-brand-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-card focus-visible:ring-brand-primary"
+            className="absolute bottom-1 right-1 bg-brand-primary text-white p-3 sm:p-3.5 rounded-full shadow-lg hover:bg-brand-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-card focus-visible:ring-brand-primary"
             initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            animate={{ scale: 1, opacity: 1, transition: { delay: 0.1 } }}
             exit={{ scale: 0, opacity: 0 }}
             whileHover={{ scale: 1.1, rotate: 10 }}
             whileTap={{ scale: 0.95 }}
           >
-            <CameraIcon className="h-6 w-6" />
+            <CameraIcon className="h-5 w-5 sm:h-6 sm:w-6" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -67,7 +94,7 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
         className="hidden"
         disabled={isSaving}
       />
-    </div>
+    </motion.div>
   );
 };
 

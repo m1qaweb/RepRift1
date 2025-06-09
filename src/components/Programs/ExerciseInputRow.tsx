@@ -1,4 +1,4 @@
-// /src/components/Programs/ExerciseInputRow.tsx (Corrected & Memoized)
+// /src/components/Programs/ExerciseInputRow.tsx
 import React from "react";
 import { motion } from "framer-motion";
 import {
@@ -6,8 +6,14 @@ import {
   DeepRequired,
   FieldErrorsImpl,
 } from "react-hook-form";
-import { XCircleIcon } from "@heroicons/react/24/solid";
+import {
+  XCircleIcon,
+  ArrowPathIcon,
+  HashtagIcon,
+  ClockIcon,
+} from "@heroicons/react/24/outline";
 import { ProgramExerciseFormFields } from "./ProgramEditorForm";
+import Button from "../UI/Button";
 
 interface ExerciseInputRowProps {
   exerciseData: ProgramExerciseFormFields;
@@ -32,108 +38,101 @@ const ExerciseInputRow: React.FC<ExerciseInputRowProps> = ({
       "name" | "masterExerciseId" | "localId"
     >
   ) => {
-    // This function logic is correct as-is
     return errors?.[fieldName]?.message;
   };
 
-  const inputClass = (hasErr: boolean) =>
-    `w-full text-sm px-2 py-1.5 border rounded-md bg-brand-card/60 text-brand-text 
-     focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary 
-     placeholder-brand-text-muted/70
-     ${hasErr ? "border-error animate-pulse-red" : "border-brand-border"}`;
+  const InputField: React.FC<any> = ({
+    name,
+    icon: Icon,
+    placeholder,
+    ...props
+  }) => {
+    const hasError = !!getErrorForField(name);
+    return (
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+          <Icon
+            className={`h-4 w-4 ${
+              hasError ? "text-error" : "text-brand-text-muted"
+            }`}
+          />
+        </div>
+        <input
+          {...props}
+          className={`w-full appearance-none rounded-lg border bg-brand-background/50 py-2.5 pl-9 pr-2 text-sm text-brand-text shadow-sm transition-colors placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-1 
+          ${
+            hasError
+              ? "border-error/50 ring-error/50 focus:border-error focus:ring-error"
+              : "border-brand-border/20 ring-brand-primary/50 focus:border-brand-primary focus:ring-brand-primary"
+          }`}
+          placeholder={placeholder}
+        />
+        {hasError && (
+          <div className="absolute -bottom-4 right-0 text-xs text-error">
+            {getErrorForField(name)}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <h5 className="font-medium text-brand-text pr-2">
-          {index + 1}. {exerciseData.name}
+    <div className="rounded-2xl bg-brand-card/30 p-4 border border-brand-border/10 backdrop-blur-sm">
+      <div className="flex justify-between items-center mb-4">
+        <h5 className="font-semibold text-base text-brand-primary truncate pr-2">
+          {exerciseData.name}
         </h5>
-        <div className="flex items-center space-x-1">
-          {canRemove && (
-            <motion.button
-              type="button"
-              onClick={onRemove}
-              className="p-1 text-error hover:text-error/80"
-              title="Remove Exercise"
-            >
-              <XCircleIcon className="h-5 w-5" />
-            </motion.button>
-          )}
-        </div>
-      </div>
-      <div className="grid grid-cols-3 sm:grid-cols-3 gap-x-3 gap-y-2 items-start pl-4">
-        {/* All JSX below this point is functionally correct and does not need changes */}
-        <div>
-          <label htmlFor={`exercises.${index}.sets`} className="sr-only">
-            Sets
-          </label>
-          <input
-            id={`exercises.${index}.sets`}
-            type="number"
-            placeholder="Sets"
-            defaultValue={exerciseData.sets}
-            {...register(`exercises.${index}.sets` as const, {
-              required: "Sets?",
-              valueAsNumber: true,
-              min: { value: 1, message: ">0" },
-            })}
-            className={inputClass(!!getErrorForField("sets"))}
-          />
-          {getErrorForField("sets") && (
-            <p className="text-xs text-error mt-0.5">
-              {getErrorForField("sets")}
-            </p>
-          )}
-        </div>
-        <div>
-          <label htmlFor={`exercises.${index}.reps`} className="sr-only">
-            Reps
-          </label>
-          <input
-            id={`exercises.${index}.reps`}
-            placeholder="Reps (e.g., 8-12)"
-            defaultValue={exerciseData.reps}
-            {...register(`exercises.${index}.reps` as const, {
-              required: "Reps?",
-            })}
-            className={inputClass(!!getErrorForField("reps"))}
-          />
-          {getErrorForField("reps") && (
-            <p className="text-xs text-error mt-0.5">
-              {getErrorForField("reps")}
-            </p>
-          )}
-        </div>
-        <div>
-          <label
-            htmlFor={`exercises.${index}.restInterval`}
-            className="sr-only"
+        {canRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onRemove}
+            className="text-brand-text-muted hover:bg-error/10 hover:text-error"
+            title="Remove Exercise"
           >
-            Rest (sec)
-          </label>
-          <input
-            id={`exercises.${index}.restInterval`}
-            type="number"
-            placeholder="Rest (s)"
-            defaultValue={exerciseData.restInterval}
-            {...register(`exercises.${index}.restInterval` as const, {
-              required: "Rest?",
-              valueAsNumber: true,
-              min: { value: 0, message: "≥0" },
-            })}
-            className={inputClass(!!getErrorForField("restInterval"))}
-          />
-          {getErrorForField("restInterval") && (
-            <p className="text-xs text-error mt-0.5">
-              {getErrorForField("restInterval")}
-            </p>
-          )}
-        </div>
+            <XCircleIcon className="h-6 w-6" />
+          </Button>
+        )}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-5">
+        <InputField
+          icon={ArrowPathIcon}
+          placeholder="Sets"
+          type="number"
+          id={`exercises.${index}.sets`}
+          defaultValue={exerciseData.sets}
+          {...register(`exercises.${index}.sets` as const, {
+            required: "Sets?",
+            valueAsNumber: true,
+            min: { value: 1, message: ">0" },
+          })}
+        />
+        <InputField
+          icon={HashtagIcon}
+          placeholder="Reps (e.g. 8-12)"
+          type="text"
+          id={`exercises.${index}.reps`}
+          defaultValue={exerciseData.reps}
+          {...register(`exercises.${index}.reps` as const, {
+            required: "Reps?",
+          })}
+        />
+        <InputField
+          icon={ClockIcon}
+          placeholder="Rest (s)"
+          type="number"
+          id={`exercises.${index}.restInterval`}
+          defaultValue={exerciseData.restInterval}
+          {...register(`exercises.${index}.restInterval` as const, {
+            required: "Rest?",
+            valueAsNumber: true,
+            min: { value: 0, message: "≥0" },
+          })}
+        />
       </div>
     </div>
   );
 };
 
-// THE FIX: Wrap the component in React.memo to prevent unnecessary re-renders.
-// This is a critical performance optimization for components in a list.
 export default React.memo(ExerciseInputRow);

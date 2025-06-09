@@ -2,42 +2,46 @@
 
 export const ANATOMICAL_GRAPH = {
   nodes: {
-    // TORSO & CENTER-LINE: Unchanged
+    // This new layout adopts a more "heroic" or "V-taper" physique,
+    // characterized by broad shoulders, a wide back, and a narrow waist.
+    // The arms and legs are repositioned for a more dynamic and natural stance.
+
+    // Torso & Center-line
     n_neck: [200, 145],
     n_cervical: [200, 160],
     n_solar: [200, 240],
     n_abs: [200, 280],
     n_pelvis: [200, 330],
-    n_pec_l_1: [170, 180],
-    n_pec_l_2: [165, 220],
-    n_pec_r_1: [230, 180],
-    n_pec_r_2: [235, 220],
-    n_trap_l: [180, 170],
-    n_trap_r: [220, 170],
-    n_lat_l: [170, 250],
-    n_lat_r: [230, 250],
 
-    n_shoulder_l: [115, 160], // Was 155
-    n_shoulder_r: [285, 160], // Was 245
+    // Upper Body
+    n_pec_l_1: [140, 190],
+    n_pec_l_2: [150, 230],
+    n_pec_r_1: [260, 190],
+    n_pec_r_2: [250, 230],
+    n_trap_l: [160, 170],
+    n_trap_r: [240, 170],
+    n_lat_l: [140, 260],
+    n_lat_r: [260, 260],
 
-    n_bicep_l: [95, 230], // Was 135
-    n_bicep_r: [305, 230], // Was 265
+    // Arms
+    n_shoulder_l: [100, 165],
+    n_shoulder_r: [300, 165],
+    n_bicep_l: [110, 250],
+    n_bicep_r: [290, 250],
+    n_tricep_l: [125, 290],
+    n_tricep_r: [275, 290],
+    n_forearm_l: [100, 350],
+    n_forearm_r: [300, 350],
 
-    n_tricep_l: [90, 270], // Was 130
-    n_tricep_r: [310, 270], // Was 270
-
-    n_forearm_l: [85, 330], // Was 125
-    n_forearm_r: [315, 330], // Was 275
-
-    // LEGS: Unchanged
-    n_glute_l: [175, 360],
-    n_glute_r: [225, 360],
-    n_quad_l: [170, 450],
-    n_quad_r: [230, 450],
-    n_ham_l: [170, 480],
-    n_ham_r: [230, 480],
-    n_calf_l: [165, 580],
-    n_calf_r: [235, 580],
+    // Legs
+    n_glute_l: [165, 360],
+    n_glute_r: [235, 360],
+    n_quad_l: [160, 450],
+    n_quad_r: [240, 450],
+    n_ham_l: [165, 490],
+    n_ham_r: [235, 490],
+    n_calf_l: [160, 580],
+    n_calf_r: [240, 580],
   },
 
   // NOTE: edges, groups, and views are structurally correct and do not need to be changed.

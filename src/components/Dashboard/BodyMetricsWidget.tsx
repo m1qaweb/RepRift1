@@ -44,7 +44,7 @@ import {
   ChartPieIcon,
   ScaleIcon,
   ExclamationTriangleIcon,
-} from "@heroicons/react/24/solid";
+} from "@heroicons/react/24/outline";
 
 interface BodyMetricsChartData {
   date: string;
@@ -66,7 +66,7 @@ const calculateBMI = (
   return undefined;
 };
 
-// --- Reusable Sub-components (omitted for brevity, they remain the same) ---
+// --- Reusable Sub-components ---
 const MetricInput: React.FC<any> = ({
   id,
   label,
@@ -78,16 +78,13 @@ const MetricInput: React.FC<any> = ({
   autoFocus,
 }) => (
   <div className="flex-1">
-    {" "}
     <label
       htmlFor={id}
       className="block text-xs font-medium text-brand-text-muted mb-1"
     >
-      {" "}
-      {label}{" "}
-    </label>{" "}
+      {label}
+    </label>
     <div className="relative">
-      {" "}
       <input
         type={type}
         id={id}
@@ -96,17 +93,18 @@ const MetricInput: React.FC<any> = ({
         onChange={onChange}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-background text-brand-text focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-sm shadow-sm"
+        className="w-full px-3 py-2.5 border border-brand-border/50 rounded-lg bg-brand-background text-brand-text focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-sm shadow-sm"
         step={type === "number" ? "0.1" : undefined}
-      />{" "}
+      />
       {unit && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-text-muted">
           {unit}
         </span>
-      )}{" "}
-    </div>{" "}
+      )}
+    </div>
   </div>
 );
+
 const statCardAnimation = {
   initial: { opacity: 0, y: 10 },
   animate: {
@@ -116,6 +114,7 @@ const statCardAnimation = {
   },
   exit: { opacity: 0, y: -10, transition: { duration: 0.2 } },
 };
+
 const pageSectionVariants = {
   initial: { opacity: 0, y: 15 },
   animate: {
@@ -233,17 +232,11 @@ const BodyMetricsWidget: React.FC = () => {
     if (!user || !weight) return;
 
     setIsSavingMetric(true);
-
-    // Create the object that matches the type the service function expects.
     const metricToSave: Omit<BodyMetric, "id"> = {
       date: getISOStringFromDate(new Date()),
       userId: user.id,
       weightKg: parseFloat(weight),
-      // The `calculateBMI` function returns `number | undefined`, which now
-      // correctly matches the expected type for `bmi`.
       bmi: calculateBMI(parseFloat(weight), userHeightCm),
-      // The `bodyFatPercentage` is also optional (number | undefined), so
-      // we just omit it if we don't have a value for it.
     };
 
     try {
@@ -266,24 +259,25 @@ const BodyMetricsWidget: React.FC = () => {
     if (value === undefined)
       return <span className="ml-2 text-xs text-brand-text-muted/70">-</span>;
     if (value === 0)
-      return <span className="ml-2 text-xs text-brand-text-muted/70">NC</span>;
+      return (
+        <span className="ml-2 text-xs text-brand-text-muted/70">&mdash;</span>
+      );
     const isPositive = value > 0;
     const TrendIcon = isPositive ? ArrowUpIcon : ArrowDownIcon;
-    const colorClass = isPositive ? "text-success" : "text-error";
+    const colorClass = isPositive ? "text-error" : "text-success";
     return (
       <motion.div
         key={`${value}-${unit}`}
         initial={{ opacity: 0, x: -5 }}
         animate={{ opacity: 1, x: 0 }}
-        className={`ml-1.5 flex items-center text-xs font-semibold ${colorClass} bg-current/10 px-2 py-1 rounded-md`}
+        className={`ml-1 sm:ml-1.5 flex items-center text-xs font-semibold ${colorClass} bg-current/10 px-1.5 py-0.5 rounded-md`}
       >
-        {" "}
-        <TrendIcon className="h-3.5 w-3.5 mr-1 flex-shrink-0" />{" "}
+        <TrendIcon className="h-3 w-3 mr-0.5 flex-shrink-0" />
         <span className="leading-none">
           {isPositive && "+"}
           {value.toFixed(1)}
           {unit}
-        </span>{" "}
+        </span>
       </motion.div>
     );
   };
@@ -294,7 +288,9 @@ const BodyMetricsWidget: React.FC = () => {
   }) => {
     if (value === undefined)
       return (
-        <span className="text-3xl font-bold text-brand-text-muted/80">--</span>
+        <span className="text-xl sm:text-2xl font-bold text-brand-text-muted/80">
+          --
+        </span>
       );
     return (
       <motion.div
@@ -304,15 +300,14 @@ const BodyMetricsWidget: React.FC = () => {
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         className="flex items-baseline"
       >
-        {" "}
-        <strong className="text-3xl font-bold text-brand-text tabular-nums">
+        <strong className="text-xl sm:text-2xl font-bold text-brand-text tabular-nums">
           {value.toFixed(1)}
-        </strong>{" "}
+        </strong>
         {unit && (
           <span className="text-sm font-medium text-brand-text-muted/90 ml-1">
             {unit}
           </span>
-        )}{" "}
+        )}
       </motion.div>
     );
   };
@@ -325,46 +320,39 @@ const BodyMetricsWidget: React.FC = () => {
     trendValue?: number;
   }> = ({ label, Icon, value, unit, trendValue }) => (
     <motion.div
-      className="flex flex-col p-3.5 rounded-xl bg-brand-card/60 dark:bg-brand-card/40 shadow-md flex-1 min-w-[120px]"
+      className="flex flex-col p-3 sm:p-3.5 rounded-xl bg-brand-background/50 flex-1 min-w-[120px]"
       variants={statCardAnimation}
     >
-      {" "}
       <div className="flex items-center text-xs text-brand-text-muted mb-1">
-        {" "}
-        <Icon className="w-4 h-4 mr-1.5 opacity-80" /> {label}{" "}
-      </div>{" "}
-      <div className="flex items-baseline mt-0.5">
-        {" "}
-        <AnimatedStat value={value} unit={unit} />{" "}
-        {renderTrend(trendValue, unit)}{" "}
-      </div>{" "}
+        <Icon className="w-4 h-4 mr-1.5 opacity-80" /> {label}
+      </div>
+      <div className="flex items-end mt-0.5">
+        <AnimatedStat value={value} unit={unit} />
+        {renderTrend(trendValue, unit)}
+      </div>
     </motion.div>
   );
 
   const cardBaseClasses =
-    "bg-brand-card/70 dark:bg-brand-card/60 backdrop-blur-xl border border-brand-border/10 shadow-xl rounded-xl";
+    "bg-brand-card/70 dark:bg-brand-card/60 backdrop-blur-xl shadow-xl rounded-xl h-full";
   const hasBmiData = chartData.some((d) => d.bmi !== undefined);
 
   if (isLoading && chartData.length === 0) {
     return (
-      <Card
-        className={`flex items-center justify-center min-h-[360px] ${cardBaseClasses}`}
-      >
-        {" "}
-        <Spinner size="lg" />{" "}
-        <p className="ml-3 text-brand-text-muted">Crunching numbers...</p>{" "}
+      <Card className={`flex items-center justify-center ${cardBaseClasses}`}>
+        <Spinner size="lg" />
+        <p className="ml-3 text-brand-text-muted">Crunching numbers...</p>
       </Card>
     );
   }
   if (error) {
     return (
       <Card
-        className={`flex flex-col items-center justify-center min-h-[360px] text-error p-4 ${cardBaseClasses}`}
+        className={`flex flex-col items-center justify-center text-error p-4 ${cardBaseClasses}`}
       >
-        {" "}
-        <ExclamationTriangleIcon className="h-12 w-12 mb-3" />{" "}
-        <h4 className="font-semibold mb-1">Error</h4>{" "}
-        <p className="text-sm text-center">{error}</p>{" "}
+        <ExclamationTriangleIcon className="h-12 w-12 mb-3" />
+        <h4 className="font-semibold mb-1">Error</h4>
+        <p className="text-sm text-center">{error}</p>
       </Card>
     );
   }
@@ -372,23 +360,30 @@ const BodyMetricsWidget: React.FC = () => {
   return (
     <>
       <motion.div
-        className={`overflow-hidden ${cardBaseClasses}`}
+        className={`flex flex-col ${cardBaseClasses}`}
         variants={pageSectionVariants}
         initial="initial"
         animate="animate"
       >
-        <div className="p-4 sm:p-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg sm:text-xl font-semibold text-brand-text">
-              Body Progress
-            </h3>
+        <div className="p-4 sm:p-5 flex-shrink-0">
+          <div className="flex justify-between items-start mb-3 sm:mb-4">
+            <div className="flex-1">
+              <h3 className="text-base sm:text-lg font-semibold text-brand-text">
+                Body Progress
+              </h3>
+              {latestMetrics.date && (
+                <p className="text-[0.7rem] text-brand-text-muted/70 mt-1">
+                  Last logged: {latestMetrics.date}
+                </p>
+              )}
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsLogModalOpen(true)}
               leftIcon={<PlusCircleIcon className="h-4 w-4" />}
             >
-              Log Metrics
+              Log
             </Button>
           </div>
           {isLoading && (
@@ -398,9 +393,7 @@ const BodyMetricsWidget: React.FC = () => {
           )}
           {latestMetrics.date && (
             <>
-              {" "}
               <AnimatePresence mode="popLayout">
-                {" "}
                 <motion.div
                   layout
                   key="stats"
@@ -409,28 +402,23 @@ const BodyMetricsWidget: React.FC = () => {
                   variants={{
                     animate: { transition: { staggerChildren: 0.07 } },
                   }}
-                  className="grid grid-cols-2 gap-3 sm:gap-4 mb-3"
+                  className="grid grid-cols-2 gap-3 sm:gap-4"
                 >
-                  {" "}
                   <LatestMetricDisplay
                     label="Latest Weight"
                     Icon={ScaleIcon}
                     value={latestMetrics.weight}
                     unit="kg"
                     trendValue={trends.weight}
-                  />{" "}
+                  />
                   <LatestMetricDisplay
                     label="Latest BMI"
                     Icon={ChartPieIcon}
                     value={latestMetrics.bmi}
                     trendValue={trends.bmi}
-                  />{" "}
-                </motion.div>{" "}
-              </AnimatePresence>{" "}
-              <p className="text-center text-[0.7rem] text-brand-text-muted/70 -mt-1 mb-3">
-                {" "}
-                Last logged: {latestMetrics.date}{" "}
-              </p>{" "}
+                  />
+                </motion.div>
+              </AnimatePresence>
             </>
           )}
         </div>
@@ -441,12 +429,12 @@ const BodyMetricsWidget: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="relative h-[300px]"
+              className="flex-grow w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={chartData}
-                  margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                  margin={{ top: 5, right: 20, left: -10, bottom: 0 }}
                 >
                   <defs>
                     <linearGradient
@@ -456,65 +444,66 @@ const BodyMetricsWidget: React.FC = () => {
                       x2="0"
                       y2="1"
                     >
-                      {" "}
                       <stop
                         offset="5%"
                         stopColor="var(--color-primary)"
                         stopOpacity={0.4}
-                      />{" "}
+                      />
                       <stop
                         offset="95%"
                         stopColor="var(--color-primary)"
                         stopOpacity={0}
-                      />{" "}
+                      />
                     </linearGradient>
                     <linearGradient id="colorBmi" x1="0" y1="0" x2="0" y2="1">
-                      {" "}
                       <stop
                         offset="5%"
                         stopColor="var(--color-accent)"
                         stopOpacity={0.4}
-                      />{" "}
+                      />
                       <stop
                         offset="95%"
                         stopColor="var(--color-accent)"
                         stopOpacity={0}
-                      />{" "}
+                      />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
-                    strokeDasharray="4 4"
+                    strokeDasharray="3 3"
                     stroke="rgb(var(--color-border-rgb) / 0.1)"
                     horizontal={true}
                     vertical={false}
                   />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 11, fill: "var(--color-text-muted)" }}
+                    tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
                     tickLine={false}
-                    axisLine={false}
+                    axisLine={{ stroke: "rgb(var(--color-border-rgb) / 0.2)" }}
                     padding={{ left: 20, right: 20 }}
+                    interval="preserveStartEnd"
                   />
                   <YAxis
                     yAxisId="weight"
                     orientation="left"
-                    tick={{ fontSize: 11, fill: "var(--color-primary)" }}
+                    tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
                     tickMargin={5}
                     tickLine={false}
                     axisLine={false}
-                    domain={["dataMin - 2", "dataMax + 4"]}
+                    domain={["dataMin - 2", "dataMax + 2"]}
                     tickFormatter={(v) => `${v}kg`}
+                    width={40}
                   />
                   {hasBmiData && (
                     <YAxis
                       yAxisId="bmi"
                       orientation="right"
-                      tick={{ fontSize: 11, fill: "var(--color-accent)" }}
+                      tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
                       tickMargin={5}
                       tickLine={false}
                       axisLine={false}
-                      domain={["dataMin - 2", "dataMax + 2"]}
+                      domain={["dataMin - 1", "dataMax + 1"]}
                       tickFormatter={(v) => v.toFixed(1)}
+                      width={35}
                     />
                   )}
                   <Tooltip
@@ -523,9 +512,14 @@ const BodyMetricsWidget: React.FC = () => {
                   />
                   <Legend
                     verticalAlign="top"
-                    height={36}
-                    iconSize={10}
-                    wrapperStyle={{ fontSize: "12px", paddingTop: "5px" }}
+                    height={30}
+                    iconSize={8}
+                    wrapperStyle={{
+                      fontSize: "11px",
+                      paddingTop: "5px",
+                      paddingBottom: "5px",
+                      opacity: 0.9,
+                    }}
                   />
                   {hasBmiData && (
                     <ReferenceArea
@@ -534,20 +528,10 @@ const BodyMetricsWidget: React.FC = () => {
                       y2={24.9}
                       strokeDasharray="3 3"
                       stroke="var(--color-success)"
-                      strokeOpacity={0.6}
+                      strokeOpacity={0.5}
                       fill="var(--color-success)"
-                      fillOpacity={0.07}
-                    >
-                      <Legend
-                        payload={[
-                          {
-                            value: "Healthy BMI",
-                            type: "line",
-                            color: "var(--color-success-dim)",
-                          },
-                        ]}
-                      />
-                    </ReferenceArea>
+                      fillOpacity={0.05}
+                    />
                   )}
                   {userWeightGoalKg && (
                     <ReferenceLine
@@ -557,24 +541,22 @@ const BodyMetricsWidget: React.FC = () => {
                         value: `Goal`,
                         position: "insideTopRight",
                         fill: "var(--color-success)",
-                        fontSize: 12,
+                        fontSize: 10,
                         dy: -5,
                       }}
                       stroke="var(--color-success)"
-                      strokeDasharray="5 5"
+                      strokeDasharray="3 3"
                     />
                   )}
-
-                  {/* ===== FIX: REMOVED `type="monotone"` TO GET STRAIGHT LINES ===== */}
                   <Line
                     yAxisId="weight"
                     dataKey="weight"
                     name="Weight"
                     stroke="var(--color-primary)"
-                    strokeWidth={2.5}
-                    dot={{ r: 3 }}
+                    strokeWidth={2}
+                    dot={{ r: 2, fill: "var(--color-primary)" }}
                     activeDot={{
-                      r: 6,
+                      r: 5,
                       stroke: "var(--color-card)",
                       strokeWidth: 2,
                       fill: "var(--color-primary)",
@@ -595,14 +577,14 @@ const BodyMetricsWidget: React.FC = () => {
                         yAxisId="bmi"
                         dataKey="bmi"
                         name="BMI"
-                        stroke="var(--color-accent)"
-                        strokeWidth={2.5}
-                        dot={{ r: 3 }}
+                        stroke="var(--color-secondary)"
+                        strokeWidth={2}
+                        dot={{ r: 2, fill: "var(--color-secondary)" }}
                         activeDot={{
-                          r: 6,
+                          r: 5,
                           stroke: "var(--color-card)",
                           strokeWidth: 2,
-                          fill: "var(--color-accent)",
+                          fill: "var(--color-secondary)",
                         }}
                         connectNulls
                       />
@@ -625,27 +607,26 @@ const BodyMetricsWidget: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="min-h-[280px] flex items-center justify-center"
+              className="flex-grow flex items-center justify-center"
             >
               <div className="text-center py-8 px-4">
-                <ScaleIcon className="h-16 w-16 mx-auto text-brand-primary/10 mb-4" />
-                <h3 className="text-lg font-semibold text-brand-text mb-2">
-                  Log Your Weight
+                <ScaleIcon className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-brand-primary/20 mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold text-brand-text mb-2">
+                  Track Your Progress
                 </h3>
                 <p className="text-sm text-brand-text-muted max-w-xs mx-auto mb-5">
-                  Start tracking your progress by logging your first
-                  measurement.
+                  Log your weight and other metrics to see your progress over
+                  time.
                 </p>
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   onClick={() => setIsLogModalOpen(true)}
                   leftIcon={<PlusCircleIcon className="h-5 w-5" />}
                 >
                   Log First Metric
                 </Button>
                 {!userHeightCm && (
-                  <p className="text-xs text-brand-primary bg-brand-primary/10 p-2 rounded-md mt-6">
-                    {" "}
+                  <p className="text-xs text-brand-primary/80 bg-brand-primary/10 p-2 rounded-md mt-6">
                     Tip: Add your height in{" "}
                     <Link
                       to="/profile"
@@ -653,7 +634,7 @@ const BodyMetricsWidget: React.FC = () => {
                     >
                       your profile
                     </Link>{" "}
-                    for automatic BMI tracking!{" "}
+                    for automatic BMI tracking!
                   </p>
                 )}
               </div>
@@ -666,23 +647,6 @@ const BodyMetricsWidget: React.FC = () => {
         onClose={() => setIsLogModalOpen(false)}
         title="Log New Body Metric"
         size="sm"
-        customFooter={
-          <div className="flex justify-end gap-3">
-            {" "}
-            <Button variant="ghost" onClick={() => setIsLogModalOpen(false)}>
-              Cancel
-            </Button>{" "}
-            <Button
-              type="submit"
-              form="log-metric-form"
-              variant="primary"
-              isLoading={isSavingMetric}
-              disabled={isSavingMetric || !newWeight}
-            >
-              Save Metric
-            </Button>{" "}
-          </div>
-        }
       >
         <form
           id="log-metric-form"
@@ -701,8 +665,23 @@ const BodyMetricsWidget: React.FC = () => {
               target: { value: React.SetStateAction<string> };
             }) => setNewWeight(e.target.value)}
             placeholder="e.g., 75.5"
+            unit="kg"
             autoFocus
           />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setIsLogModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="log-metric-form"
+              variant="primary"
+              isLoading={isSavingMetric}
+              disabled={isSavingMetric || !newWeight}
+            >
+              Save Metric
+            </Button>
+          </div>
         </form>
       </Modal>
     </>
@@ -719,52 +698,57 @@ const CustomCursor: React.FC<any> = ({ points, height }) => {
       y2={height}
       stroke="rgb(var(--color-primary-rgb) / 0.5)"
       strokeWidth={1}
-      strokeDasharray="5 5"
+      strokeDasharray="3 3"
     />
   );
 };
+
 const CustomTooltip: React.FC<TooltipProps<ValueType, NameType>> = ({
   active,
   payload,
 }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload as BodyMetricsChartData;
+
     const renderChange = (value?: number) => {
       if (value === undefined || value === 0) return null;
       const isPositive = value > 0;
-      const color = isPositive ? "var(--color-success)" : "var(--color-error)";
       return (
-        <span style={{ color }} className="font-normal text-xs ml-2">
+        <span
+          className={`ml-2 text-xs font-semibold ${
+            isPositive ? "text-error" : "text-success"
+          }`}
+        >
           ({isPositive ? "+" : ""}
           {value.toFixed(1)})
         </span>
       );
     };
+
     return (
-      <div className="p-3 bg-brand-card/80 dark:bg-brand-card/90 backdrop-blur-md shadow-xl rounded-lg border border-brand-border/30 text-xs min-w-[180px]">
-        {" "}
+      <div className="p-2 sm:p-2.5 bg-brand-card/80 dark:bg-brand-card/90 backdrop-blur-md shadow-xl rounded-lg border border-brand-border/30 text-xs min-w-[140px]">
         <p className="label font-bold text-brand-text mb-2 text-sm">
           {formatDate(data.fullDate, "MMMM d, yyyy")}
-        </p>{" "}
+        </p>
         {payload.map((entry) => (
           <div
             key={`item-${entry.name}`}
             style={{ color: entry.color }}
             className="font-semibold flex justify-between items-center my-1.5"
           >
-            {" "}
-            <span>{entry.name}:</span>{" "}
+            <span>{entry.name}:</span>
             <div className="flex items-baseline">
-              {" "}
-              <span className="ml-2 tabular-nums text-base">{`${(
-                entry.value as number
-              ).toFixed(1)}${entry.name === "Weight" ? "kg" : ""}`}</span>{" "}
+              <span className="ml-2 tabular-nums text-sm sm:text-base">
+                {`${(entry.value as number).toFixed(1)}${
+                  entry.name === "Weight" ? "kg" : ""
+                }`}
+              </span>
               {renderChange(
                 entry.name === "Weight" ? data.weightChange : data.bmiChange
-              )}{" "}
-            </div>{" "}
+              )}
+            </div>
           </div>
-        ))}{" "}
+        ))}
       </div>
     );
   }

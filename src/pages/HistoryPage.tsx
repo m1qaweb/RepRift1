@@ -14,7 +14,17 @@ import { formatDate as formatDateUtil } from "../utils/dateUtils";
 import Modal from "../components/UI/Modal";
 import Button from "../components/UI/Button";
 import Spinner from "../components/UI/Spinner";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  FireIcon,
+  ListBulletIcon,
+  PencilIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
+import Card from "../components/UI/Card";
+import { Tooltip } from "react-tooltip";
 
 interface CalendarDay {
   date: Date;
@@ -30,44 +40,31 @@ const HistoryPage: React.FC = () => {
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [selectedLog, setSelectedLog] = useState<WorkoutLog | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoadingLogs, setIsLoadingLogs] = useState(true);
-  const [isGeneratingCalendar, setIsGeneratingCalendar] = useState(false);
-  const [monthChangeDirection, setMonthChangeDirection] = useState<
-    "prev" | "next" | null
-  >(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [monthChangeDirection, setMonthChangeDirection] = useState(1);
 
-  // Fetch all workout logs once on component mount
   useEffect(() => {
-    setIsLoadingLogs(true);
-    // === CHANGE 2: Call the new service function ===
-    // We no longer pass any arguments, as RLS handles user filtering on the backend.
-    getWorkoutLogs()
-      // === END CHANGE ===
-      .then((logs) => {
+    const fetchLogs = async () => {
+      setIsLoading(true);
+      try {
+        const logs = await getWorkoutLogs();
         setAllWorkoutLogs(logs);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Failed to load workout history:", err);
-        // You could set an error state here to show a message
-      })
-      .finally(() => {
-        setIsLoadingLogs(false);
-      });
-  }, []); // Empty dependency array means this runs only once. Perfect.
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLogs();
+  }, []);
 
-  // The rest of the component's logic is perfectly structured and needs no changes.
   const generateCalendarDays = useCallback(() => {
-    // ... no change ...
-    if (isLoadingLogs) return;
-
-    setIsGeneratingCalendar(true);
     const monthStart = startOfMonth(currentMonthDate);
     const daysInMonthValue = getDaysInMonth(currentMonthDate);
     const firstDayOfMonthWeekDay = getDay(monthStart);
 
     const daysArray: CalendarDay[] = [];
 
-    // Days from previous month
     for (let i = 0; i < firstDayOfMonthWeekDay; i++) {
       daysArray.push({
         date: new Date(
@@ -81,7 +78,6 @@ const HistoryPage: React.FC = () => {
       });
     }
 
-    // Days of current month
     for (let i = 1; i <= daysInMonthValue; i++) {
       const currentDateVal = new Date(
         monthStart.getFullYear(),
@@ -104,9 +100,9 @@ const HistoryPage: React.FC = () => {
       });
     }
 
-    // Days from next month
     const totalDaysShown = daysArray.length;
-    const remainingCells = Math.ceil(totalDaysShown / 7) * 7 - totalDaysShown;
+    const remainingCells =
+      totalDaysShown <= 35 ? 35 - totalDaysShown : 42 - totalDaysShown;
     for (let i = 1; i <= remainingCells; i++) {
       daysArray.push({
         date: new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, i),
@@ -117,12 +113,13 @@ const HistoryPage: React.FC = () => {
     }
 
     setCalendarDays(daysArray);
-    setIsGeneratingCalendar(false);
-  }, [currentMonthDate, allWorkoutLogs, isLoadingLogs]);
+  }, [currentMonthDate, allWorkoutLogs]);
 
   useEffect(() => {
-    generateCalendarDays();
-  }, [generateCalendarDays]);
+    if (!isLoading) {
+      generateCalendarDays();
+    }
+  }, [isLoading, generateCalendarDays]);
 
   const handleDayClick = (day: CalendarDay) => {
     if (day.hasWorkout && day.workoutLog) {
@@ -132,7 +129,7 @@ const HistoryPage: React.FC = () => {
   };
 
   const changeMonth = (direction: "prev" | "next") => {
-    setMonthChangeDirection(direction);
+    setMonthChangeDirection(direction === "next" ? 1 : -1);
     setCurrentMonthDate(
       (prev) =>
         new Date(
@@ -143,152 +140,253 @@ const HistoryPage: React.FC = () => {
     );
   };
 
-  const calendarAnimationProps =
-    monthChangeDirection === "next"
-      ? {
-          initial: { opacity: 0, x: 50 },
-          animate: { opacity: 1, x: 0 },
-          exit: { opacity: 0, x: -50 },
-        }
-      : {
-          initial: { opacity: 0, x: -50 },
-          animate: { opacity: 1, x: 0 },
-          exit: { opacity: 0, x: 50 },
-        };
+  const pageVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
 
-  const showLoadingSpinner =
-    isLoadingLogs || (isGeneratingCalendar && calendarDays.length === 0);
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { type: "spring", stiffness: 100 },
+    },
+  };
+
+  const calendarVariants = {
+    enter: (direction: number) => ({
+      opacity: 0,
+      x: direction > 0 ? 50 : -50,
+    }),
+    center: {
+      opacity: 1,
+      x: 0,
+    },
+    exit: (direction: number) => ({
+      opacity: 0,
+      x: direction < 0 ? 50 : -50,
+    }),
+  };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6 p-4 bg-brand-card rounded-lg shadow-lg">
-        <Button
-          variant="ghost"
-          onClick={() => changeMonth("prev")}
-          aria-label="Previous month"
-          disabled={isLoadingLogs || isGeneratingCalendar}
+    <>
+      <motion.div
+        className="container mx-auto p-4 sm:p-6"
+        variants={pageVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div
+          variants={itemVariants}
+          className="flex justify-between items-center mb-6"
         >
-          <ChevronLeftIcon className="h-6 w-6" />
-        </Button>
-        <h1 className="text-2xl font-semibold text-brand-text">
-          {format(currentMonthDate, "MMMM yyyy")}
-        </h1>
-        <Button
-          variant="ghost"
-          onClick={() => changeMonth("next")}
-          aria-label="Next month"
-          disabled={isLoadingLogs || isGeneratingCalendar}
-        >
-          <ChevronRightIcon className="h-6 w-6" />
-        </Button>
-      </div>
-
-      {showLoadingSpinner ? (
-        <div className="flex justify-center items-center h-64">
-          <Spinner size="lg" />
-        </div>
-      ) : (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentMonthDate.toISOString()}
-            className="grid grid-cols-7 gap-1 md:gap-2"
-            {...calendarAnimationProps}
-            transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
-          >
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-              (dayName) => (
-                <div
-                  key={dayName}
-                  className="text-center font-medium text-xs sm:text-sm text-brand-text-muted py-2"
-                >
-                  {dayName}
-                </div>
-              )
-            )}
-            {calendarDays.map((day, index) => (
-              <motion.div
-                key={`${format(day.date, "yyyy-MM-dd")}-${index}`}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.01, duration: 0.2 }}
-                onClick={() => day.isCurrentMonth && handleDayClick(day)}
-                className={`relative p-1 sm:p-2 border aspect-square flex flex-col items-center justify-center rounded-md transition-colors ${
-                  day.isCurrentMonth
-                    ? "bg-brand-card hover:bg-brand-secondary/30"
-                    : "bg-brand-secondary/20 text-brand-text-muted/50"
-                } ${
-                  day.isToday
-                    ? "border-brand-primary ring-2 ring-brand-primary/50"
-                    : "border-brand-border"
-                } ${
-                  day.hasWorkout && day.isCurrentMonth ? "cursor-pointer" : ""
-                }`}
-              >
-                <span className={`text-xs sm:text-sm`}>
-                  {format(day.date, "d")}
-                </span>
-                {day.hasWorkout && day.isCurrentMonth && (
-                  <motion.div
-                    className="absolute bottom-1 left-1/2 transform -translate-x-1/2 h-1.5 w-1.5 bg-brand-accent rounded-full"
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.7, 1, 0.7] }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                )}
-              </motion.div>
-            ))}
-          </motion.div>
-        </AnimatePresence>
-      )}
-
-      {selectedLog && (
-        <Modal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          title={`Workout: ${formatDateUtil(
-            selectedLog.date,
-            "MMMM d, yyyy"
-          )} - ${selectedLog.programTitle}`}
-        >
-          <div className="text-sm text-brand-text">
-            {selectedLog.durationMinutes && (
-              <p>
-                <strong>Duration:</strong> {selectedLog.durationMinutes} minutes
-              </p>
-            )}
-            {selectedLog.caloriesBurned && (
-              <p>
-                <strong>Calories Burned:</strong> {selectedLog.caloriesBurned}{" "}
-                kcal
-              </p>
-            )}
-            <h5 className="font-semibold mt-3 mb-1">Completed Exercises:</h5>
-            {selectedLog.completedExercises.length > 0 ? (
-              <ul className="list-disc list-inside space-y-1 max-h-60 overflow-y-auto pr-2">
-                {selectedLog.completedExercises.map((ex, idx) => (
-                  <li key={idx}>
-                    {" "}
-                    {ex.exerciseName}:{" "}
-                    {ex.sets.filter((s) => s.completed).length}/{ex.sets.length}{" "}
-                    sets{" "}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No specific exercises tracked.</p>
-            )}
-            {selectedLog.notes && (
-              <p className="mt-3">
-                <strong>Notes:</strong> {selectedLog.notes}
-              </p>
-            )}
+          <h1 className="text-3xl font-bold text-brand-text tracking-tight">
+            Workout History
+          </h1>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => changeMonth("prev")}
+              aria-label="Previous month"
+              disabled={isLoading}
+              className="!p-2"
+            >
+              <ChevronLeftIcon className="h-5 w-5" />
+            </Button>
+            <h2 className="text-xl font-semibold text-brand-text text-center w-36 sm:w-48">
+              {format(currentMonthDate, "MMMM yyyy")}
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => changeMonth("next")}
+              aria-label="Next month"
+              disabled={isLoading}
+              className="!p-2"
+            >
+              <ChevronRightIcon className="h-5 w-5" />
+            </Button>
           </div>
-        </Modal>
-      )}
-    </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Card className="p-4 sm:p-6 bg-brand-card/60 backdrop-blur-sm border border-white/10 min-h-[580px]">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-[50vh]">
+                <Spinner size="lg" />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-7 gap-1 md:gap-2 mb-3">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (dayName) => (
+                      <div
+                        key={dayName}
+                        className="text-center font-semibold text-xs sm:text-sm text-brand-text-muted py-2"
+                      >
+                        {dayName.substring(0, 3)}
+                      </div>
+                    )
+                  )}
+                </div>
+                <div className="relative overflow-hidden">
+                  <AnimatePresence mode="wait" custom={monthChangeDirection}>
+                    <motion.div
+                      key={currentMonthDate.toISOString()}
+                      className="grid grid-cols-7 gap-1 md:gap-2"
+                      variants={calendarVariants}
+                      custom={monthChangeDirection}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      transition={{
+                        x: { type: "spring", stiffness: 300, damping: 30 },
+                        opacity: { duration: 0.2 },
+                      }}
+                    >
+                      {calendarDays.map((day, index) => {
+                        const hasWorkout = day.hasWorkout && day.isCurrentMonth;
+                        const tooltipId = `day-tooltip-${index}`;
+                        return (
+                          <motion.div
+                            key={index}
+                            onClick={() =>
+                              day.isCurrentMonth && handleDayClick(day)
+                            }
+                            className={`relative aspect-[4/5] sm:aspect-square flex items-center justify-center rounded-lg transition-all duration-300 group
+                            ${!day.isCurrentMonth && "text-brand-text-muted/30"}
+                            ${
+                              hasWorkout
+                                ? "bg-brand-primary text-brand-primary-content font-bold shadow-lg shadow-brand-primary/20 cursor-pointer"
+                                : "bg-brand-background/30 hover:bg-brand-background/60"
+                            }
+                            ${
+                              day.isToday &&
+                              !hasWorkout &&
+                              "ring-2 ring-brand-primary ring-offset-2 ring-offset-brand-background"
+                            }
+                          `}
+                            whileHover={day.isCurrentMonth ? { y: -4 } : {}}
+                            data-tooltip-id={hasWorkout ? tooltipId : undefined}
+                          >
+                            {hasWorkout && day.workoutLog && (
+                              <Tooltip
+                                id={tooltipId}
+                                place="top"
+                                className="z-20 !bg-brand-card !text-brand-text !rounded-lg !p-2 !shadow-lg border !border-brand-border"
+                                render={() =>
+                                  day.workoutLog ? (
+                                    <div className="text-sm">
+                                      <p className="font-bold text-brand-primary">
+                                        {day.workoutLog.programTitle}
+                                      </p>
+                                      <p className="flex items-center gap-1.5">
+                                        <ClockIcon className="h-4 w-4" />{" "}
+                                        {day.workoutLog.durationMinutes} min
+                                      </p>
+                                    </div>
+                                  ) : null
+                                }
+                              />
+                            )}
+                            <span className="relative z-10 text-sm">
+                              {format(day.date, "d")}
+                            </span>
+                            {hasWorkout && (
+                              <SparklesIcon className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-brand-primary-content/50 group-hover:text-brand-primary-content transition-colors" />
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </>
+            )}
+          </Card>
+        </motion.div>
+
+        {selectedLog && (
+          <Modal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            title={`Workout Details`}
+          >
+            <div className="space-y-4 text-brand-text">
+              <div className="text-center -mt-2">
+                <h4 className="text-lg font-bold text-brand-primary">
+                  {selectedLog.programTitle}
+                </h4>
+                <p className="text-sm text-brand-text-muted">
+                  {formatDateUtil(selectedLog.date, "EEEE, MMMM d, yyyy")}
+                </p>
+              </div>
+
+              <div className="flex justify-center items-center gap-6 text-sm bg-brand-background/40 p-3 rounded-lg">
+                {selectedLog.durationMinutes && (
+                  <span className="flex items-center gap-1.5">
+                    <ClockIcon className="h-5 w-5 text-brand-text-muted" />{" "}
+                    {selectedLog.durationMinutes} min
+                  </span>
+                )}
+                {selectedLog.caloriesBurned && (
+                  <span className="flex items-center gap-1.5">
+                    <FireIcon className="h-5 w-5 text-brand-text-muted" />{" "}
+                    {selectedLog.caloriesBurned} kcal
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <h5 className="font-semibold flex items-center gap-2 text-sm text-brand-text-muted">
+                  <ListBulletIcon className="h-5 w-5" />
+                  Completed Exercises
+                </h5>
+                {selectedLog.completedExercises.length > 0 ? (
+                  <div className="max-h-60 overflow-y-auto pr-2 bg-brand-background/40 rounded-lg p-3 space-y-2">
+                    {selectedLog.completedExercises.map((ex, idx) => (
+                      <div
+                        key={idx}
+                        className="text-sm flex justify-between items-center"
+                      >
+                        <span>{ex.exerciseName}</span>
+                        <span className="font-medium bg-brand-background/50 px-2 py-0.5 rounded">
+                          {ex.sets.filter((s) => s.completed).length}/
+                          {ex.sets.length} sets
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-brand-text-muted italic text-sm p-3 bg-brand-background/40 rounded-lg">
+                    No specific exercises were tracked for this session.
+                  </p>
+                )}
+              </div>
+
+              {selectedLog.notes && (
+                <div className="space-y-2">
+                  <h5 className="font-semibold flex items-center gap-2 text-sm text-brand-text-muted">
+                    <PencilIcon className="h-5 w-5" />
+                    Notes
+                  </h5>
+                  <p className="text-sm bg-brand-background/40 rounded-lg p-3 text-brand-text-muted">
+                    {selectedLog.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          </Modal>
+        )}
+      </motion.div>
+    </>
   );
 };
 

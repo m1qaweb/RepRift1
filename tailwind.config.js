@@ -10,6 +10,8 @@ module.exports = {
         "brand-text": "rgb(var(--color-text-rgb) / <alpha-value>)",
         "brand-text-muted": "rgb(var(--color-text-muted-rgb) / <alpha-value>)",
         "brand-primary": "rgb(var(--color-primary-rgb) / <alpha-value>)",
+        "brand-primary-content":
+          "rgb(var(--color-primary-content-rgb) / <alpha-value>)",
         "brand-secondary": "rgb(var(--color-secondary-rgb) / <alpha-value>)",
         "brand-accent": "rgb(var(--color-accent-rgb) / <alpha-value>)",
         "brand-border": "rgb(var(--color-border-rgb) / <alpha-value>)",

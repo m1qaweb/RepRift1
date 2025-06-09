@@ -1,21 +1,38 @@
-// /src/components/Workout/WorkoutLogForm.tsx (Corrected)
+// /src/components/Workout/WorkoutLogForm.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
-import { Program, WorkoutLog } from "../../types/data"; // Keep the types
-import { getProgramById } from "../../services/programService"; // We will use the program service
-import { saveWorkoutLog } from "../../services/workoutLogService"; // And our new workout log service
+import {
+  Program,
+  WorkoutLog,
+  MasterExercise,
+  Exercise,
+  CompletedSet,
+  CompletedExercise,
+} from "../../types/data";
+import { getProgramById } from "../../services/programService";
+import { saveWorkoutLog } from "../../services/workoutLogService";
 import Button from "../UI/Button";
 import ExerciseLogRow from "./ExerciseLogRow";
 import Timer from "./Timer";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { formatDate } from "../../utils/dateUtils";
 import Spinner from "../UI/Spinner";
-import { useAuth } from "../../contexts/AuthContext"; // <<< FIX: Import useAuth
+import { useAuth } from "../../contexts/AuthContext";
+import { useWorkout } from "../../contexts/WorkoutContext";
+import { getMasterExercises } from "../../services/masterExerciseService";
+import { generateUUID } from "../../utils/uuid";
+import {
+  DocumentTextIcon,
+  CalendarDaysIcon,
+  CheckCircleIcon,
+  ArrowUturnLeftIcon,
+} from "@heroicons/react/24/outline";
 
 interface WorkoutLogFormProps {}
 
 type LoggedSet = {
+  id: string;
   reps: number | null;
   weight: number | null;
   completed: boolean;
@@ -29,7 +46,7 @@ type LoggedExercise = {
   sets: LoggedSet[];
 };
 
-type WorkoutFormInputs = {
+type WorkoutFormData = {
   programId: string;
   programTitle: string;
   date: string;
@@ -38,7 +55,7 @@ type WorkoutFormInputs = {
 };
 
 const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
-  const { user } = useAuth(); // <<< FIX: Get the user from AuthContext
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(location.search);
@@ -52,7 +69,6 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
     number | null
   >(null);
 
-  // Create a memoized start time to calculate duration
   const workoutStartTime = useMemo(() => new Date(), []);
 
   const {
@@ -61,8 +77,9 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
     handleSubmit,
     reset,
     watch,
-    formState: { errors, isSubmitting },
-  } = useForm<WorkoutFormInputs>({
+    formState: { isSubmitting },
+    getValues,
+  } = useForm<WorkoutFormData>({
     defaultValues: {
       programId: preSelectedProgramId || "",
       programTitle: "",
@@ -79,6 +96,7 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
 
   const watchedProgramId = watch("programId");
   const watchedLoggedExercises = watch("loggedExercises");
+  const { addExercisedMuscleGroup } = useWorkout();
 
   useEffect(() => {
     if (watchedProgramId) {
@@ -87,29 +105,27 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
         .then((prog) => {
           if (prog) {
             setSelectedProgram(prog);
-            const initialLoggedExercises = prog.exercises.map((ex) => ({
-              exerciseId: ex.id,
-              exerciseName: ex.name,
-              targetSets: ex.sets,
-              targetReps: ex.reps,
-              sets: Array(ex.sets)
-                .fill(null)
-                .map(() => ({ reps: null, weight: null, completed: false })),
-            }));
+            const initialLoggedExercises = prog.exercises.map(
+              (ex: Exercise) => ({
+                exerciseId: ex.id,
+                exerciseName: ex.name,
+                targetSets: ex.sets,
+                targetReps: ex.reps,
+                sets: Array(ex.sets)
+                  .fill(null)
+                  .map(() => ({
+                    id: generateUUID(),
+                    reps: null,
+                    weight: null,
+                    completed: false,
+                  })),
+              })
+            );
             reset({
               programId: prog.id,
               programTitle: prog.title,
               date: preSelectedDate,
               loggedExercises: initialLoggedExercises,
-              notes: "",
-            });
-          } else {
-            setSelectedProgram(null);
-            reset({
-              programId: watchedProgramId,
-              programTitle: "Program not found",
-              date: preSelectedDate,
-              loggedExercises: [],
               notes: "",
             });
           }
@@ -128,15 +144,12 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
     }
   }, [watchedProgramId, reset, preSelectedDate]);
 
-  const onSubmitHandler: SubmitHandler<WorkoutFormInputs> = async (data) => {
-    // FIX: Check for user before submitting
+  const onSubmitHandler: SubmitHandler<WorkoutFormData> = async (data) => {
     if (!user) {
       console.error("Cannot log workout, no user is logged in.");
-      // Optionally show an error to the user
       return;
     }
 
-    // FIX: Calculate total volume to estimate calories. (Simple estimation)
     const totalVolume = data.loggedExercises.reduce(
       (sum, le) =>
         sum +
@@ -147,34 +160,57 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
       0
     );
 
-    // FIX: The type here should be `Omit<WorkoutLog, "id">` because we are providing all other fields
     const workoutLogToSave: Omit<WorkoutLog, "id"> = {
-      userId: user.id, // <<< FIX #1: Add the required userId
+      userId: user.id,
       programId: data.programId,
       programTitle: data.programTitle,
       date: data.date,
-      // <<< FIX #2: Add the required duration and calories fields
       durationMinutes: Math.round(
         (new Date().getTime() - workoutStartTime.getTime()) / 60000
-      ), // Simple duration calculation
-      caloriesBurned: Math.round(totalVolume * 0.05), // Simple calorie estimation based on volume
+      ),
+      caloriesBurned: Math.round(totalVolume * 0.05),
       notes: data.notes,
-      completedExercises: data.loggedExercises.map((le) => ({
-        exerciseId: le.exerciseId,
-        exerciseName: le.exerciseName,
-        sets: le.sets.map((s) => ({
-          reps: s.reps === null || s.reps === undefined ? null : Number(s.reps),
-          weight:
-            s.weight === null || s.weight === undefined
-              ? null
-              : Number(s.weight),
-          completed: s.completed,
-        })),
-      })),
+      completedExercises: data.loggedExercises.map(
+        (le): CompletedExercise => ({
+          exerciseId: le.exerciseId,
+          exerciseName: le.exerciseName,
+          sets: le.sets.map(
+            (s): CompletedSet => ({
+              reps: s.reps === null ? 0 : Number(s.reps),
+              weight: s.weight === null ? 0 : Number(s.weight),
+              completed: s.completed,
+            })
+          ),
+        })
+      ),
     };
+
     try {
       const savedLog = await saveWorkoutLog(workoutLogToSave);
-      console.log("Workout logged:", savedLog);
+
+      const masterExercises: MasterExercise[] = await getMasterExercises();
+      const exerciseIdToBodyPart = new Map<string, string>(
+        masterExercises.map((ex: MasterExercise) => [ex.id, ex.bodyPart])
+      );
+
+      const bodyPartToUIGroupMap: { [key: string]: string[] } = {
+        Arms: ["Biceps", "Triceps"],
+        "Full Body": ["Chest", "Back", "Legs", "Core", "Shoulders"],
+      };
+
+      data.loggedExercises.forEach((le) => {
+        const bodyPart = exerciseIdToBodyPart.get(le.exerciseId);
+        if (bodyPart) {
+          if (bodyPartToUIGroupMap[bodyPart]) {
+            bodyPartToUIGroupMap[bodyPart].forEach((group) => {
+              addExercisedMuscleGroup(group);
+            });
+          } else {
+            addExercisedMuscleGroup(bodyPart);
+          }
+        }
+      });
+
       navigate(`/history?highlight=${savedLog.date}`);
     } catch (error) {
       console.error("Failed to log workout:", error);
@@ -187,181 +223,218 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
     field: keyof LoggedSet,
     value: string | number | boolean
   ) => {
-    const currentExercise = watchedLoggedExercises[exerciseIndex];
-    const updatedSets = currentExercise.sets.map((s, idx) =>
-      idx === setIndex
-        ? {
-            ...s,
-            [field]:
-              (field === "reps" || field === "weight") &&
-              typeof value === "string"
-                ? value === ""
-                  ? null
-                  : parseFloat(value)
-                : value,
-          }
-        : s
-    );
-    update(exerciseIndex, { ...currentExercise, sets: updatedSets });
+    const loggedExercises = getValues("loggedExercises");
+    const updatedExercise = { ...loggedExercises[exerciseIndex] };
+    const updatedSet = { ...updatedExercise.sets[setIndex] };
+
+    let processedValue: number | boolean | null = null;
+    if (field === "reps" || field === "weight") {
+      const numValue = parseFloat(value as string);
+      processedValue = isNaN(numValue) ? null : numValue;
+    } else if (field === "completed") {
+      processedValue = Boolean(value);
+    }
+
+    (updatedSet[field] as any) = processedValue;
+    updatedExercise.sets[setIndex] = updatedSet;
+    update(exerciseIndex, updatedExercise);
   };
 
-  const handleTimerStart = (exerciseIndex: number) => {
-    const currentExerciseInProgram = selectedProgram?.exercises.find(
-      (ex) => ex.id === watchedLoggedExercises[exerciseIndex]?.exerciseId
-    );
-    if (currentExerciseInProgram?.restInterval) {
-      setActiveTimerExerciseIndex(exerciseIndex);
-    }
+  const addSet = (exerciseIndex: number) => {
+    const loggedExercises = getValues("loggedExercises");
+    const updatedExercise = { ...loggedExercises[exerciseIndex] };
+    updatedExercise.sets.push({
+      id: generateUUID(),
+      reps: null,
+      weight: null,
+      completed: false,
+    });
+    update(exerciseIndex, updatedExercise);
+  };
+
+  const removeSet = (exerciseIndex: number, setIndex: number) => {
+    const loggedExercises = getValues("loggedExercises");
+    const updatedExercise = { ...loggedExercises[exerciseIndex] };
+    updatedExercise.sets.splice(setIndex, 1);
+    update(exerciseIndex, updatedExercise);
+  };
+
+  const handleTimerStart = (duration: number) => {
+    setActiveTimerExerciseIndex(duration);
   };
 
   const handleTimerComplete = () => {
     setActiveTimerExerciseIndex(null);
   };
 
-  if (!preSelectedProgramId) {
-    return (
-      <div className="p-6 bg-brand-card rounded-lg shadow-md text-center text-brand-text">
-        <p className="mb-4">Please select a program to log a workout.</p>
-        <Link to="/programs">
-          <Button variant="primary">Select Program</Button>
-        </Link>
-      </div>
-    );
-  }
+  const pageVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { type: "spring", stiffness: 100 },
+    },
+  };
 
   if (isLoadingProgram) {
     return (
-      <div className="p-6 text-center flex flex-col items-center justify-center h-64 text-brand-text">
-        <Spinner size="lg" className="mb-4" />
-        Loading program details...
+      <div className="p-6 flex justify-center items-center h-64">
+        <Spinner />
       </div>
     );
   }
 
-  if (!selectedProgram && !isLoadingProgram && watchedProgramId) {
+  if (!preSelectedProgramId) {
     return (
-      <div className="p-6 text-center text-error">
-        {" "}
-        Program not found.{" "}
-        <Link to="/programs" className="underline hover:text-brand-primary">
-          Select another program.
-        </Link>
-      </div>
-    );
-  }
-
-  if (!selectedProgram) {
-    return (
-      <div className="p-6 text-center flex flex-col items-center justify-center h-64 text-brand-text">
-        <Spinner size="lg" className="mb-4" />
-        Initializing program...
-      </div>
+      <motion.div
+        variants={pageVariants}
+        initial="hidden"
+        animate="visible"
+        className="p-6 bg-brand-card/80 backdrop-blur-sm border border-white/10 rounded-lg shadow-lg text-center text-brand-text max-w-md mx-auto"
+      >
+        <motion.p variants={itemVariants} className="mb-4 text-lg">
+          Please select a program to log a workout.
+        </motion.p>
+        <motion.div variants={itemVariants}>
+          <Button
+            as={Link}
+            to="/programs"
+            variant="primary"
+            className="text-brand-primary hover:underline"
+          >
+            Go to Programs
+          </Button>
+        </motion.div>
+      </motion.div>
     );
   }
 
   return (
-    <motion.form
-      onSubmit={handleSubmit(onSubmitHandler)}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="p-4 md:p-6 space-y-6 bg-brand-card rounded-lg shadow-xl"
+    <motion.div
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+      className="max-w-4xl mx-auto"
     >
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-brand-text">
-            {selectedProgram?.title || "Log Workout"}
-          </h2>
-          <p className="text-sm text-brand-text-muted">
-            Using program: {selectedProgram?.title || "N/A"}
-          </p>
-        </div>
-        <input
-          type="date"
-          {...register("date", { required: "Date is required" })}
-          defaultValue={preSelectedDate}
-          className="px-3 py-2 border border-brand-border rounded-md bg-transparent text-brand-text focus:ring-1 focus:ring-brand-primary focus:border-brand-primary"
-        />
-      </div>
-      {errors.date && (
-        <p className="text-xs text-error">{errors.date.message}</p>
-      )}
-
-      <input type="hidden" {...register("programId")} />
-      <input type="hidden" {...register("programTitle")} />
-
-      {fields.length > 0 ? (
-        <div className="space-y-8">
-          {fields.map((field, exerciseIndex) => (
-            <div key={field.id}>
-              <ExerciseLogRow
-                exercise={
-                  selectedProgram!.exercises.find(
-                    (ex) => ex.id === field.exerciseId
-                  )!
-                }
-                loggedSets={field.sets}
-                onSetChange={(setIndex, setField, value) =>
-                  handleSetChange(exerciseIndex, setIndex, setField, value)
-                }
-                onTimerStart={() => handleTimerStart(exerciseIndex)}
-                isTimerActive={activeTimerExerciseIndex === exerciseIndex}
-              />
-              {activeTimerExerciseIndex === exerciseIndex &&
-                selectedProgram && (
-                  <div className="mt-6 flex justify-center">
-                    <Timer
-                      durationSeconds={
-                        selectedProgram.exercises.find(
-                          (ex) => ex.id === field.exerciseId
-                        )?.restInterval || 60
-                      }
-                      onComplete={handleTimerComplete}
-                      size={80}
-                      className="my-2"
-                    />
-                  </div>
-                )}
+      <form onSubmit={handleSubmit(onSubmitHandler)}>
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col sm:flex-row justify-between sm:items-center mb-8"
+        >
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-brand-text tracking-tight">
+              Log Workout
+            </h1>
+            <div className="flex items-center gap-4 mt-2 text-brand-text-muted">
+              <div className="flex items-center gap-1.5">
+                <DocumentTextIcon className="h-5 w-5" />
+                <span className="font-medium">
+                  {selectedProgram?.title || "Custom Workout"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CalendarDaysIcon className="h-5 w-5" />
+                <span className="font-medium">
+                  {formatDate(new Date(preSelectedDate), "EEEE, d MMMM")}
+                </span>
+              </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        !isLoadingProgram && (
-          <p className="text-brand-text-muted text-center py-6">
-            No exercises found for this program, or program is still loading.
-          </p>
-        )
-      )}
+          </div>
+        </motion.div>
 
-      <div>
-        <label
-          htmlFor="notes"
-          className="block text-sm font-medium text-brand-text"
+        {fields.length > 0 && (
+          <motion.div
+            className="space-y-4"
+            variants={{ visible: { transition: { staggerChildren: 0.07 } } }}
+            initial="hidden"
+            animate="visible"
+          >
+            {fields.map((field, index) => {
+              const exerciseData = selectedProgram?.exercises.find(
+                (ex) => ex.id === field.exerciseId
+              );
+              if (!exerciseData) return null;
+
+              return (
+                <ExerciseLogRow
+                  key={field.id}
+                  exercise={exerciseData}
+                  loggedSets={watchedLoggedExercises[index].sets}
+                  onSetChange={(setIndex, fieldName, value) =>
+                    handleSetChange(index, setIndex, fieldName, value)
+                  }
+                  onTimerStart={() =>
+                    handleTimerStart(exerciseData.restInterval)
+                  }
+                  isTimerActive={
+                    activeTimerExerciseIndex === exerciseData.restInterval
+                  }
+                  onAddSet={() => addSet(index)}
+                  onRemoveSet={(setIndex) => removeSet(index, setIndex)}
+                />
+              );
+            })}
+          </motion.div>
+        )}
+
+        <motion.div variants={itemVariants} className="mt-8">
+          <label
+            htmlFor="notes"
+            className="block text-sm font-medium text-brand-text-muted mb-2"
+          >
+            Workout Notes
+          </label>
+          <textarea
+            id="notes"
+            {...register("notes")}
+            rows={4}
+            className="w-full bg-brand-card/50 backdrop-blur-sm border-2 border-white/10 rounded-lg p-3 focus:ring-brand-primary focus:border-brand-primary transition-colors placeholder:text-brand-text-muted/60"
+            placeholder="How did the workout feel? Any PRs?"
+          ></textarea>
+        </motion.div>
+
+        <motion.div
+          variants={itemVariants}
+          className="mt-8 flex justify-end space-x-4"
         >
-          Workout Notes
-        </label>
-        <textarea
-          id="notes"
-          rows={3}
-          {...register("notes")}
-          className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md shadow-sm bg-transparent text-brand-text focus:ring-1 focus:ring-brand-primary focus:border-brand-primary placeholder-brand-text-muted/70"
-          placeholder="Any comments about your workout, how you felt, PBs, etc."
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate(-1)}
+            leftIcon={<ArrowUturnLeftIcon className="h-5 w-5" />}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={isSubmitting}
+            leftIcon={
+              isSubmitting ? null : <CheckCircleIcon className="h-5 w-5" />
+            }
+            className="min-w-[200px]"
+          >
+            {isSubmitting ? <Spinner size="sm" /> : "Finish & Save Workout"}
+          </Button>
+        </motion.div>
+      </form>
+      {activeTimerExerciseIndex !== null && (
+        <Timer
+          durationSeconds={activeTimerExerciseIndex}
+          onComplete={handleTimerComplete}
         />
-      </div>
-
-      <div className="flex justify-end space-x-3 pt-4 border-t border-brand-border">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => navigate("/dashboard")}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" variant="primary" isLoading={isSubmitting}>
-          Finish & Save Workout
-        </Button>
-      </div>
-    </motion.form>
+      )}
+    </motion.div>
   );
 };
 

@@ -1,117 +1,107 @@
 // /src/components/Programs/ProgramCard.tsx
-import React from "react";
-import Button from "../UI/Button";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import Card from "../UI/Card";
 import { Program } from "../../types/data";
 import {
   PencilSquareIcon,
-  EyeIcon,
+  TrashIcon,
   BoltIcon,
-  TrashIcon, // Import TrashIcon
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { Link } from "react-router-dom";
+import Button from "../UI/Button";
 
 interface ProgramCardProps {
   program: Program;
   onEditClick?: (programId: string) => void;
-  onDeleteClick?: (programId: string, programTitle: string) => void; // MODIFIED: Add onDeleteClick, pass title for confirmation
+  onDeleteClick?: (programId: string, programTitle: string) => void;
 }
+
+const cardVariants = {
+  initial: { opacity: 0, y: 30, scale: 0.98 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -20, transition: { duration: 0.2 } },
+};
 
 const ProgramCard: React.FC<ProgramCardProps> = ({
   program,
   onEditClick,
   onDeleteClick,
 }) => {
-  const cardHoverEffect = { y: -5 };
-  const totalExercises = program.exercises.length;
+  const [isHovered, setIsHovered] = useState(false);
+  const totalExercises = program.exercises?.length ?? 0;
 
   return (
-    <Card
-      className="flex flex-col justify-between h-full group transition-all duration-300 ease-in-out"
-      initial={{ opacity: 0, y: 30, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      whileHover={cardHoverEffect}
+    <motion.div
+      variants={cardVariants}
+      className="relative h-full"
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
     >
-      <div className="p-4">
-        <div className="flex justify-between items-start mb-3">
-          <Link to={`/programs/${program.id}`} className="flex-grow min-w-0">
-            <h3 className="text-lg sm:text-xl font-semibold text-brand-primary group-hover:text-[rgb(var(--color-primary-rgb)/0.8)] transition-colors truncate pr-2">
-              {program.title}
-            </h3>
-          </Link>
-          {/* Action Icons Container */}
-          <div className="flex items-center flex-shrink-0 space-x-1">
-            {onEditClick && (
-              <motion.button
-                onClick={() => onEditClick(program.id)}
-                className="p-1.5 text-brand-text-muted hover:text-brand-primary"
-                whileHover={{ rotate: 10, scale: 1.15 }}
-                title="Edit Program"
-              >
-                <PencilSquareIcon className="h-5 w-5" />
-              </motion.button>
-            )}
-            {onDeleteClick && ( // MODIFIED: Add Delete Button
-              <motion.button
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent triggering link if card itself is a link area
-                  onDeleteClick(program.id, program.title);
-                }}
-                className="p-1.5 text-brand-text-muted hover:text-error" // Error color for delete
-                whileHover={{ scale: 1.15 }}
-                title="Delete Program"
-              >
-                <TrashIcon className="h-5 w-5" />
-              </motion.button>
-            )}
+      <Link to={`/programs/${program.id}`} className="block h-full">
+        <div className="h-full bg-brand-card/50 dark:bg-brand-card/40 backdrop-blur-lg rounded-xl shadow-lg border border-brand-border/20 group transition-all duration-300 ease-in-out overflow-hidden hover:border-brand-primary/50 hover:shadow-brand-primary/10">
+          <div className="relative p-5 flex flex-col h-full">
+            <div className="flex-grow">
+              <h3 className="text-lg font-bold text-brand-text group-hover:text-brand-primary transition-colors duration-300 truncate">
+                {program.title}
+              </h3>
+              <p className="text-sm text-brand-text-muted mt-2 h-10 overflow-hidden line-clamp-2">
+                {program.description || "No description provided."}
+              </p>
+
+              <div className="mt-4 text-xs font-medium text-brand-text-muted flex items-center">
+                <BoltIcon className="h-4 w-4 mr-1.5 text-brand-accent/80" />
+                <span>
+                  {totalExercises} Exercise{totalExercises !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-brand-border/20 flex items-center justify-between text-sm font-medium">
+              <span className="text-brand-primary">View Program</span>
+              <ChevronRightIcon className="h-5 w-5 text-brand-primary/70 transform transition-transform duration-300 group-hover:translate-x-1" />
+            </div>
           </div>
         </div>
-        <p className="text-xs sm:text-sm text-brand-text-muted mb-4 h-12 sm:h-16 overflow-hidden line-clamp-3 sm:line-clamp-4">
-          {program.description || "No description provided."}
-        </p>
-        {totalExercises > 0 && (
-          <div className="mb-4 text-xs">
-            <div className="flex items-center text-brand-text-muted mb-1">
-              <BoltIcon className="h-3.5 w-3.5 mr-1.5 text-brand-accent" />
-              <span className="font-medium text-brand-text">
-                {totalExercises}
-              </span>{" "}
-              Exercises
-            </div>
-            <ul className="list-none space-y-0.5 pl-5">
-              {program.exercises.slice(0, 2).map((ex) => (
-                <li key={ex.id} className="text-brand-text-muted truncate">
-                  {ex.name}
-                </li>
-              ))}
-              {program.exercises.length > 2 && (
-                <li className="text-brand-text-muted/70 italic">...and more</li>
-              )}
-            </ul>
-          </div>
-        )}
-        {totalExercises === 0 && (
-          <p className="text-xs text-brand-text-muted/70 mb-4 italic">
-            No exercises in this program yet.
-          </p>
-        )}
-      </div>
-      <div className="mt-auto pt-3 border-t border-brand-border/70 p-4">
-        <Link to={`/programs/${program.id}`} className="block">
+      </Link>
+      <motion.div
+        className="absolute top-3 right-3 flex items-center space-x-1"
+        initial={{ opacity: 0, x: 10 }}
+        animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : 10 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+      >
+        {onEditClick && (
           <Button
             variant="ghost"
-            size="sm"
-            className="w-full group/button"
-            rightIcon={
-              <EyeIcon className="h-4 w-4 text-brand-primary/80 group-hover/button:text-brand-primary transition-colors" />
-            }
+            size="icon"
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onEditClick(program.id);
+            }}
+            className="bg-brand-background/50 hover:bg-brand-background/80 text-brand-text-muted hover:text-brand-primary"
+            title="Edit Program"
           >
-            View Details
+            <PencilSquareIcon className="h-5 w-5" />
           </Button>
-        </Link>
-      </div>
-    </Card>
+        )}
+        {onDeleteClick && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDeleteClick(program.id, program.title);
+            }}
+            className="bg-brand-background/50 hover:bg-brand-background/80 text-brand-text-muted hover:text-error"
+            title="Delete Program"
+          >
+            <TrashIcon className="h-5 w-5" />
+          </Button>
+        )}
+      </motion.div>
+    </motion.div>
   );
 };
 export default ProgramCard;
