@@ -54,97 +54,97 @@ export const ANATOMICAL_PATHS_HYPER: {
         "M150,132 C135,128 115,145 105,170 C95,195 108,210 120,208 C135,198 145,180 148,162z M250,132 C265,128 285,145 295,170 C305,195 292,210 280,208 C265,198 255,180 252,162z",
       textureId: "fanned-fiber",
     },
-    // UPDATED: HYPER-REALISTIC CHEST RECONSTRUCTION v3
+    // TAPERED CHEST - FULL UPPER, STREAMLINED LOWER
     Chest: {
       base: [
-        // Left Pec: smaller, more defined shape
-        "M198,148 C178,148,160,155,155,170 C152,185,154,205,162,228 C175,235,190,236,198,235 Z",
-        // Right Pec: Mirror image
-        "M202,148 C222,148,240,155,245,170 C248,185,246,205,238,228 C225,235,210,236,202,235 Z",
+        // LEFT PEC: Upper section remains broad, lower section is tighter.
+        "M196,152 C175,155, 160,165, 155,180 C152,200, 165,230, 196,230 Z",
+        // RIGHT PEC: Mirror image
+        "M204,152 C225,155, 240,165, 245,180 C248,200, 235,230, 204,230 Z",
       ],
       detail: [
-        // Clavicular head fibers (upper chest)
-        "M198,155 C180,158,165,165,158,172",
-        "M202,155 C220,158,235,165,242,172",
-        // Sternal head fibers (lower chest)
-        "M162,225 C175,230,198,232,198,232",
-        "M238,225 C225,230,202,232,202,232",
-        // Sternum to armpit line to show definition
-        "M198,185 c-15,0,-30,-2,-40,-8",
-        "M202,185 c15,0,30,-2,40,-8",
-        // Central sternum line
-        "M200,148 V 235",
+        // Upper clavicular fibers (unchanged)
+        "M196,158 C180,162, 165,175, 157,185",
+        "M204,158 C220,162, 235,175, 243,185",
+        // Tighter sternal fibers for a less bulky lower chest
+        "M196,195 C178,198, 168,215, 168,225",
+        "M204,195 C222,198, 232,215, 232,225",
+        // Lower contour line adjusted for new shape
+        "M168,225 C180,230, 196,230, 196,230",
+        "M232,225 C220,230, 204,230, 204,230",
+        // Center sternum line, shortened slightly
+        "M200,152 V 230",
       ],
       outline:
-        "M198,148 C178,148,160,155,155,170 C152,185,154,205,162,228 C175,235,190,236,198,235 Z M202,148 C222,148,240,155,245,170 C248,185,246,205,238,228 C225,235,210,236,202,235 Z",
+        "M196,152 C175,155, 160,165, 155,180 C152,200, 165,230, 196,230 Z M204,152 C225,155, 240,165, 245,180 C248,200, 235,230, 204,230 Z",
       textureId: "angled-fiber",
     },
 
-    // START OF HYPER-REALISTIC CORE RECONSTRUCTION
+    // START OF HYPER-REALISTIC CORE RECONSTRUCTION - REPOSITIONED
     AbdominisTopL: {
-      base: ["M198,235 C188,238 185,252 185,262 Q190,265 198,264 Z"],
-      outline: "M198,235 C188,238 185,252 185,262 Q190,265 198,264 Z",
+      base: ["M198,245 C188,248 185,262 185,272 Q190,275 198,274 Z"],
+      outline: "M198,245 C188,248 185,262 185,272 Q190,275 198,274 Z",
       textureId: "vertical-fiber",
     },
     AbdominisTopR: {
-      base: ["M202,235 C212,238 215,252 215,262 Q210,265 202,264 Z"],
-      outline: "M202,235 C212,238 215,252 215,262 Q210,265 202,264 Z",
+      base: ["M202,245 C212,248 215,262 215,272 Q210,275 202,274 Z"],
+      outline: "M202,245 C212,248 215,262 215,272 Q210,275 202,274 Z",
       textureId: "vertical-fiber",
     },
     AbdominisMidL: {
       base: [
-        "M198,268 Q190,267 186,266 C185,278 186,293 186,295 Q190,298 198,297 Z",
+        "M198,278 Q190,277 186,276 C185,288 186,303 186,305 Q190,308 198,307 Z",
       ],
       outline:
-        "M198,268 Q190,267 186,266 C185,278 186,293 186,295 Q190,298 198,297 Z",
+        "M198,278 Q190,277 186,276 C185,288 186,303 186,305 Q190,308 198,307 Z",
       textureId: "vertical-fiber",
     },
     AbdominisMidR: {
       base: [
-        "M202,268 Q210,267 214,266 C215,278 214,293 214,295 Q210,298 202,297 Z",
+        "M202,278 Q210,277 214,276 C215,288 214,303 214,305 Q210,308 202,307 Z",
       ],
       outline:
-        "M202,268 Q210,267 214,266 C215,278 214,293 214,295 Q210,298 202,297 Z",
+        "M202,278 Q210,277 214,276 C215,288 214,303 214,305 Q210,308 202,307 Z",
       textureId: "vertical-fiber",
     },
     AbdominisBotL: {
-      base: ["M198,301 Q190,299 187,298 C186.5,313 187,328 187,328 H198 Z"],
-      outline: "M198,301 Q190,299 187,298 C186.5,313 187,328 187,328 H198 Z",
+      base: ["M198,311 Q190,309 187,308 C186.5,323 187,338 187,338 H198 Z"],
+      outline: "M198,311 Q190,309 187,308 C186.5,323 187,338 187,338 H198 Z",
       textureId: "vertical-fiber",
     },
     AbdominisBotR: {
-      base: ["M202,301 Q210,299 213,298 C213.5,313 213,328 213,328 H202 Z"],
-      outline: "M202,301 Q210,299 213,298 C213.5,313 213,328 213,328 H202 Z",
+      base: ["M202,311 Q210,309 213,308 C213.5,323 213,338 213,338 H202 Z"],
+      outline: "M202,311 Q210,309 213,308 C213.5,323 213,338 213,338 H202 Z",
       textureId: "vertical-fiber",
     },
     AbdominisLower: {
       base: [
-        "M188,331 C188,336 195,340 200,340 C205,340 212,336 212,331 L200,334 Z",
+        "M188,341 C188,346 195,350 200,350 C205,350 212,346 212,341 L200,344 Z",
       ],
       outline:
-        "M188,331 C188,336 195,340 200,340 C205,340 212,336 212,331 L200,334 Z",
+        "M188,341 C188,346 195,350 200,350 C205,350 212,346 212,341 L200,344 Z",
       textureId: "vertical-fiber",
     },
     Obliques: {
       base: [
-        "M178,255 C165,280 170,328 185,330 C178,315 174,280 178,255z",
-        "M222,255 C235,280 230,328 215,330 C222,315 226,280 222,255z",
+        "M178,265 C165,290 170,338 185,340 C178,325 174,290 178,265z",
+        "M222,265 C235,290 230,338 215,340 C222,325 226,290 222,265z",
       ],
       detail: [
-        "M175,260 C170,290 178,320 184,328",
-        "M225,260 C230,290 222,320 216,328",
+        "M175,270 C170,300 178,330 184,338",
+        "M225,270 C230,300 222,330 216,338",
       ],
       outline:
-        "M178,255 C165,280 170,328 185,330 C178,315 174,280 178,255z M222,255 C235,280 230,328 215,330 C222,315 226,280 222,255z",
+        "M178,265 C165,290 170,338 185,340 C178,325 174,290 178,265z M222,265 C235,290 230,338 215,340 C222,325 226,290 222,265z",
       textureId: "angled-fiber",
     },
     SerratusAnterior: {
       base: [
-        "M160,230 L176,255 L170,260z M165,245 L178,268 L172,273z M170,262 L180,282 L175,285z",
-        "M240,230 L224,255 L230,260z M235,245 L222,268 L228,273z M230,262 L220,282 L225,285z",
+        "M160,240 L176,265 L170,270z M165,255 L178,278 L172,283z M170,272 L180,292 L175,295z",
+        "M240,240 L224,265 L230,270z M235,255 L222,278 L228,283z M230,272 L220,292 L225,295z",
       ],
       outline:
-        "M160,230 L176,255 L170,260z M165,245 L178,268 L172,273z M170,262 L180,282 L175,285z M240,230 L224,255 L230,260z M235,245 L222,268 L228,273z M230,262 L220,282 L225,285z",
+        "M160,240 L176,265 L170,270z M165,255 L178,278 L172,283z M170,272 L180,292 L175,295z M240,240 L224,265 L230,270z M235,255 L222,278 L228,283z M230,272 L220,292 L225,295z",
       textureId: "fanned-fiber",
     },
     // GOD-TIER BICEPS - REDEFINED FOR REALISM
@@ -171,63 +171,80 @@ export const ANATOMICAL_PATHS_HYPER: {
 
     Brachioradialis: {
       base: [
-        "M115,295 C105,305 100,350 112,380 l8,-4 c4,-30 4,-50 -8,-77z",
-        "M285,295 C295,305 300,350 288,380 l-8,-4 c-4,-30 -4,-50 8,-77z",
+        "M120,295 C113,305 110,340 118,370 l6,-4 c3,-25 3,-45 -7,-67z",
+        "M280,295 C287,305 290,340 282,370 l-6,-4 c-3,-25 -3,-45 7,-67z",
       ],
-      detail: ["M112,315 c-2,20 2,40 4,50", "M288,315 c2,20 -2,40 -4,50"],
+      detail: ["M118,315 c-1,15 1,35 2,40", "M282,315 c1,15 -1,35 -2,40"],
       outline:
-        "M115,295 C105,305 100,350 112,380 l8,-4 c4,-30 4,-50 -8,-77z M285,295 C295,305 300,350 288,380 l-8,-4 c-4,-30 -4,-50 8,-77z",
+        "M120,295 C113,305 110,340 118,370 l6,-4 c3,-25 3,-45 -7,-67z M280,295 C287,305 290,340 282,370 l-6,-4 c-3,-25 -3,-45 7,-67z",
       textureId: "angled-fiber",
     },
-    // HYPER-REALISTIC QUADS - VASTUS LATERALIS, RECTUS FEMORIS, VASTUS MEDIALIS
+    // ELITE-TIER QUADS - REPOSITIONED FOR WIDER STANCE
     Quads: {
       base: [
-        // LEFT LEG
-        // Vastus Lateralis (Outer Thigh): Long, sweeping muscle on the outside.
-        "M188,390 C165,430 160,490 178,520 C179,480 182,430 190,392 Z",
-        // Rectus Femoris (Center Thigh): The prominent, central muscle.
-        "M190,392 C188,450 186,510 184,522 C194,512 195,450 192,392 Z",
-        // Vastus Medialis (Inner Thigh): The "teardrop" muscle above the knee.
-        "M192,470 C202,490 198,518 186,523 C192,510 195,490 192,470 Z",
+        // LEFT LEG (Shifted Left/Up)
+        "M185,360 C155,410 150,470 170,500 C175,450 180,400 187,360 Z",
+        "M187,360 C185,430 183,490 181,502 C191,492 193,430 189,360 Z",
+        "M189,430 C200,455 195,495 183,503 C190,485 193,460 189,430 Z",
 
-        // RIGHT LEG (mirror)
-        // Vastus Lateralis
-        "M212,390 C235,430 240,490 222,520 C221,480 218,430 210,392 Z",
-        // Rectus Femoris
-        "M210,392 C212,450 214,510 216,522 C206,512 205,450 208,392 Z",
-        // Vastus Medialis
-        "M208,470 C198,490 202,518 214,523 C208,510 205,490 208,470 Z",
+        // RIGHT LEG (Shifted Right/Up)
+        "M215,360 C245,410 250,470 230,500 C225,450 220,400 213,360 Z",
+        "M213,360 C215,430 217,490 219,502 C209,492 207,430 211,360 Z",
+        "M211,430 C200,455 205,495 217,503 C210,485 207,460 211,430 Z",
       ],
       detail: [
-        // Details for definition and separation
-        // Left Leg
-        "M190,392 C185,450 182,515 180,520", // Division between Vastus Lateralis and Rectus Femoris
-        "M192,470 C190,495 187,518 185,522", // Division for Vastus Medialis
-        "M185,388 C195,450 194,515 188,523", // Path of the Sartorius muscle
-        // Right Leg
-        "M210,392 C215,450 218,515 220,520", // Division between Vastus Lateralis and Rectus Femoris
-        "M208,470 C210,495 213,518 215,522", // Division for Vastus Medialis
-        "M215,388 C205,450 206,515 212,523", // Path of the Sartorius muscle
-        // Patellar Ligament/Tendon Area
-        "M184,522 C188,528 192,528 195,522",
-        "M216,522 C212,528 208,528 205,522",
+        // LEFT LEG - Adjusted definition lines
+        "M187,360 C177,425 173,490 171,498",
+        "M189,430 C187,460 184,495 182,502",
+        "M175,358 C187,430 185,490 179,503",
+        "M188,360 L 188 500",
+
+        // RIGHT LEG - Adjusted definition lines
+        "M213,360 C223,425 227,490 229,498",
+        "M211,430 C213,460 216,495 218,502",
+        "M225,358 C213,430 215,490 221,503",
+        "M212,360 L 212 500",
+
+        // Patellar tendon and knee complexity
+        "M181,502 C185,508 189,508 192,502",
+        "M219,502 C215,508 211,508 208,502",
       ],
       outline:
-        "M188,390 C165,430 160,490 178,520 C182,525 188,525 186,523 C198,518 202,490 192,470 L192,392 Z M212,390 C235,430 240,490 222,520 C218,525 212,525 214,523 C202,518 198,490 208,470 L208,392 Z",
+        "M185,360 C155,410 150,470 170,500 C165,505 185,505 190,503 C200,470 200,420 189,360 Z M215,360 C245,410 250,470 230,500 C235,505 215,505 210,503 C200,470 200,420 211,360 Z",
       textureId: "vertical-fiber",
     },
+    // GOD-TIER CALVES - SCULPTED GASTROCNEMIUS & SOLEUS
     Calves: {
       base: [
-        "M185,525 C178,565 178,610 190,615 C188,580 185,550 185,525z",
-        "M215,525 C222,565 222,610 210,615 C212,580 215,550 215,525z",
+        // LEFT LEG
+        // Gastrocnemius, Medial Head (inner calf)
+        "M188, 515 C 200, 550, 196, 590, 187, 605 L 186, 520 Z",
+        // Gastrocnemius, Lateral Head (outer calf)
+        "M182, 515 C 170, 550, 174, 590, 183, 605 L 184, 520 Z",
+        // Soleus (peeking out from the sides)
+        "M173, 570 C 170, 590, 175, 605, 181, 608 Z",
+
+        // RIGHT LEG (mirror)
+        // Gastrocnemius, Medial Head
+        "M212, 515 C 200, 550, 204, 590, 213, 605 L 214, 520 Z",
+        // Gastrocnemius, Lateral Head
+        "M218, 515 C 230, 550, 226, 590, 217, 605 L 216, 520 Z",
+        // Soleus
+        "M227, 570 C 230, 590, 225, 605, 219, 608 Z",
       ],
       detail: [
-        "M188,530 C182,570 184,605 195,613",
-        "M212,530 C218,570 216,605 205,613",
-        "M200,525 V 615",
+        // LEFT LEG - Definition lines for the classic 'diamond' shape
+        "M185, 520 V 600", // Central division of Gastrocnemius
+        "M178, 565 c -3, 15 0, 30 4, 38", // Detail on the Soleus/Lateral Gastrocnemius
+        "M185, 605 L 185, 620", // Achilles Tendon
+
+        // RIGHT LEG - Definition lines
+        "M215, 520 V 600", // Central division of Gastrocnemius
+        "M222, 565 c 3, 15 0, 30 -4, 38", // Detail on the Soleus/Lateral Gastrocnemius
+        "M215, 605 L 215, 620", // Achilles Tendon
       ],
       outline:
-        "M185,525 C178,565 178,610 190,615 C188,580 185,550 185,525z M215,525 C222,565 222,610 210,615 C212,580 215,550 215,525z",
+        "M188, 515 C 200, 550, 196, 590, 187, 605 L185,620 L183,605 C 174,590 170,550 182,515 Z M212, 515 C 200,550 204,590 213,605 L215,620 L217,605 C 226,590 230,550 218,515 Z",
       textureId: "vertical-fiber",
     },
   },

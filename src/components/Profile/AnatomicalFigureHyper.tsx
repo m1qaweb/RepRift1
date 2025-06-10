@@ -11,6 +11,28 @@ import {
 import SvgDefs from "./SvgDefs";
 import { type UIGroup, ANATOMICAL_GRAPH } from "./AnatomicalGraph";
 import { useWorkout } from "../../contexts/WorkoutContext";
+import { Exercise } from "../../types"; // Assuming types are in ../../types
+
+// New helper to get recently exercised muscles from the new context
+const getRecentlyExercisedGroups = (
+  workouts: import("../../types").Workout[]
+): Set<UIGroup> => {
+  const recentGroups = new Set<UIGroup>();
+  const now = Date.now();
+  const twentyFourHours = 24 * 60 * 60 * 1000;
+
+  workouts.forEach((workout) => {
+    if (now - new Date(workout.date).getTime() < twentyFourHours) {
+      workout.exercises.forEach((exercise: Exercise) => {
+        exercise.muscleGroups.forEach((group) => {
+          recentGroups.add(group as UIGroup);
+        });
+      });
+    }
+  });
+
+  return recentGroups;
+};
 
 interface AnatomicalFigureHyperProps {
   view: "front" | "back";
@@ -45,7 +67,7 @@ const MusclePart: FC<MusclePartProps> = ({
   onClick,
 }) => {
   const fillUrl = isExercised
-    ? "var(--color-muscle-exercised)"
+    ? "url(#exercised-pump)"
     : `url(#${groupName}-color)`;
   const textureUrl = `url(#${data.textureId})`;
 
@@ -60,7 +82,11 @@ const MusclePart: FC<MusclePartProps> = ({
       transition={{ duration: 0.3, ease: "easeOut" }}
       style={{
         cursor: "pointer",
-        filter: isFocused ? "url(#outline-glow-filter)" : "none",
+        filter: isFocused
+          ? "url(#outline-glow-filter)"
+          : isExercised
+          ? "url(#exercised-glow)"
+          : "none",
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -118,7 +144,13 @@ export const AnatomicalFigureHyper: FC<AnatomicalFigureHyperProps> = ({
     [view]
   );
 
-  const { exercisedMuscleGroups } = useWorkout();
+  const { workouts } = useWorkout(); // Get full workout history
+
+  // Derive exercised muscles from the last 24 hours
+  const exercisedMuscleGroups = useMemo(
+    () => getRecentlyExercisedGroups(workouts),
+    [workouts]
+  );
 
   const handleFocus = (group: UIGroup) => {
     onFocus(focusedUiGroup === group ? null : group);
@@ -148,7 +180,7 @@ export const AnatomicalFigureHyper: FC<AnatomicalFigureHyperProps> = ({
             activation={activeMuscleGroups.get(uiGroup) || 0}
             isFocused={focusedUiGroup === uiGroup}
             isHovered={hoveredUiGroup === uiGroup}
-            isExercised={exercisedMuscleGroups.includes(uiGroup)}
+            isExercised={exercisedMuscleGroups.has(uiGroup)}
             onMouseEnter={() => onHover(uiGroup)}
             onMouseLeave={() => onHover(null)}
             onClick={() => handleFocus(uiGroup)}

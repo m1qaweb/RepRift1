@@ -85,6 +85,22 @@ const SvgDefs = memo(() => (
       />
     </linearGradient>
 
+    {/* NEW: Filter and gradient for exercised muscles */}
+    <filter id="exercised-glow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.5" result="blur" />
+      <feFlood floodColor="#ff0000" result="flood" />
+      <feComposite in="flood" in2="blur" operator="in" result="glow" />
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <radialGradient id="exercised-pump">
+      <stop offset="0%" stopColor="rgba(255, 50, 50, 0.7)" />
+      <stop offset="100%" stopColor="rgba(200, 0, 0, 0)" />
+    </radialGradient>
+
     {/* TEXTURE DEFINITIONS (from original code) */}
     <filter id="vertical-fiber-filter">
       <feTurbulence

@@ -1,38 +1,13 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowTrendingUpIcon,
-  FireIcon,
+  RectangleStackIcon,
+  CalendarDaysIcon,
   ClockIcon,
   TrophyIcon,
 } from "@heroicons/react/24/outline";
-
-const stats = [
-  {
-    name: "Volume Increase",
-    stat: "12.5%",
-    icon: ArrowTrendingUpIcon,
-    changeType: "increase",
-  },
-  {
-    name: "Avg. Duration",
-    stat: "58 min",
-    icon: ClockIcon,
-    changeType: "neutral",
-  },
-  {
-    name: "Active Streak",
-    stat: "16 days",
-    icon: FireIcon,
-    changeType: "increase",
-  },
-  {
-    name: "PRs This Month",
-    stat: "4",
-    icon: TrophyIcon,
-    changeType: "increase",
-  },
-];
+import { useWorkout } from "../../contexts/WorkoutContext";
+import { isThisWeek, parseISO } from "date-fns";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -40,6 +15,42 @@ const cardVariants = {
 };
 
 const QuickStats: React.FC = () => {
+  const { workouts, personalRecords } = useWorkout();
+
+  const stats = useMemo(() => {
+    const totalWorkouts = workouts.length;
+    const workoutsThisWeek = workouts.filter((w) =>
+      isThisWeek(parseISO(w.date), { weekStartsOn: 1 })
+    ).length;
+    const totalHours = Math.floor(
+      workouts.reduce((acc, w) => acc + w.duration, 0) / 60
+    );
+    const totalPrs = Object.keys(personalRecords).length;
+
+    return [
+      {
+        name: "Total Workouts",
+        stat: totalWorkouts.toString(),
+        icon: RectangleStackIcon,
+      },
+      {
+        name: "Workouts This Week",
+        stat: workoutsThisWeek.toString(),
+        icon: CalendarDaysIcon,
+      },
+      {
+        name: "Hours Trained",
+        stat: `${totalHours} hrs`,
+        icon: ClockIcon,
+      },
+      {
+        name: "Total PRs",
+        stat: totalPrs.toString(),
+        icon: TrophyIcon,
+      },
+    ];
+  }, [workouts, personalRecords]);
+
   return (
     <motion.div
       className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"

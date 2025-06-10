@@ -10,7 +10,7 @@ import {
   XCircleIcon,
   ArrowPathIcon,
   HashtagIcon,
-  ClockIcon,
+  ScaleIcon,
 } from "@heroicons/react/24/outline";
 import { ProgramExerciseFormFields } from "./ProgramEditorForm";
 import Button from "../UI/Button";
@@ -41,12 +41,18 @@ const ExerciseInputRow: React.FC<ExerciseInputRowProps> = ({
     return errors?.[fieldName]?.message;
   };
 
-  const InputField: React.FC<any> = ({
-    name,
-    icon: Icon,
-    placeholder,
-    ...props
-  }) => {
+  const InputField = React.forwardRef<
+    HTMLInputElement,
+    {
+      name: keyof Omit<
+        ProgramExerciseFormFields,
+        "name" | "masterExerciseId" | "localId"
+      >;
+      icon: React.ComponentType<any>;
+      placeholder: string;
+      [key: string]: any;
+    }
+  >(({ name, icon: Icon, placeholder, ...props }, ref) => {
     const hasError = !!getErrorForField(name);
     return (
       <div className="relative">
@@ -58,6 +64,8 @@ const ExerciseInputRow: React.FC<ExerciseInputRowProps> = ({
           />
         </div>
         <input
+          ref={ref}
+          name={name}
           {...props}
           className={`w-full appearance-none rounded-lg border bg-brand-background/50 py-2.5 pl-9 pr-2 text-sm text-brand-text shadow-sm transition-colors placeholder:text-brand-text-muted/60 focus:outline-none focus:ring-1 
           ${
@@ -74,7 +82,7 @@ const ExerciseInputRow: React.FC<ExerciseInputRowProps> = ({
         )}
       </div>
     );
-  };
+  });
 
   return (
     <div className="rounded-2xl bg-brand-card/30 p-4 border border-brand-border/10 backdrop-blur-sm">
@@ -100,7 +108,6 @@ const ExerciseInputRow: React.FC<ExerciseInputRowProps> = ({
           icon={ArrowPathIcon}
           placeholder="Sets"
           type="number"
-          id={`exercises.${index}.sets`}
           defaultValue={exerciseData.sets}
           {...register(`exercises.${index}.sets` as const, {
             required: "Sets?",
@@ -112,20 +119,18 @@ const ExerciseInputRow: React.FC<ExerciseInputRowProps> = ({
           icon={HashtagIcon}
           placeholder="Reps (e.g. 8-12)"
           type="text"
-          id={`exercises.${index}.reps`}
           defaultValue={exerciseData.reps}
           {...register(`exercises.${index}.reps` as const, {
             required: "Reps?",
           })}
         />
         <InputField
-          icon={ClockIcon}
-          placeholder="Rest (s)"
+          icon={ScaleIcon}
+          placeholder="Weight (kg)"
           type="number"
-          id={`exercises.${index}.restInterval`}
-          defaultValue={exerciseData.restInterval}
-          {...register(`exercises.${index}.restInterval` as const, {
-            required: "Rest?",
+          defaultValue={exerciseData.weight}
+          {...register(`exercises.${index}.weight` as const, {
+            required: "Weight?",
             valueAsNumber: true,
             min: { value: 0, message: "≥0" },
           })}

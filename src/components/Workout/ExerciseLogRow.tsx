@@ -10,6 +10,7 @@ import {
   XMarkIcon,
   TrophyIcon,
   HashtagIcon,
+  ScaleIcon,
 } from "@heroicons/react/24/outline";
 
 interface LoggedSetData {
@@ -113,16 +114,23 @@ const ExerciseLogRowComponent: React.FC<ExerciseLogRowProps> = ({
               Target: {exercise.sets} sets of {exercise.reps} reps
             </p>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onTimerStart}
-            leftIcon={<ClockIcon className="h-4 w-4" />}
-            disabled={isTimerActive}
-            className="!text-brand-text-muted hover:!bg-brand-primary/20 hover:!text-brand-primary"
-          >
-            {exercise.restInterval}s Rest
-          </Button>
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center text-sm text-brand-text-muted bg-brand-card/70 px-3 py-1 rounded-full">
+              <ScaleIcon className="h-4 w-4 mr-1.5" />
+              <span>{exercise.weight}kg Target</span>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onTimerStart}
+              leftIcon={<ClockIcon className="h-4 w-4" />}
+              disabled={isTimerActive}
+              className="!text-brand-text-muted hover:!bg-brand-primary/20 hover:!text-brand-primary"
+              title="Start Rest Timer"
+            >
+              Rest
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-3">

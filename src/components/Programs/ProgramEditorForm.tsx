@@ -39,7 +39,7 @@ export type ProgramExerciseFormFields = {
   name: string;
   sets: number;
   reps: string;
-  restInterval: number;
+  weight: number;
   localId: string;
 };
 
@@ -100,7 +100,7 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
         name: ex.name,
         sets: ex.sets ?? 3,
         reps: ex.reps ?? "8-12",
-        restInterval: ex.restInterval ?? 60,
+        weight: ex.weight ?? 0,
         localId: (ex as any).localId || Math.random().toString(36).substr(2, 9),
       }));
       reset({
@@ -119,7 +119,7 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
       name: ex.name,
       sets: Number(ex.sets),
       reps: ex.reps,
-      restInterval: Number(ex.restInterval),
+      weight: Number(ex.weight),
     }));
     const programDataToSave = {
       id: program?.id,
@@ -143,7 +143,7 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
       name: masterEx.name,
       sets: 3,
       reps: "8-12",
-      restInterval: 60,
+      weight: 0,
       localId: Math.random().toString(36).substr(2, 9),
     }));
     append(newExercisesToAdd);

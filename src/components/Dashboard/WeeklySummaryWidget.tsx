@@ -1,127 +1,141 @@
 // /src/components/Dashboard/WeeklySummaryWidget.tsx (Corrected)
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Cell,
 } from "recharts";
 import Card from "../UI/Card";
-import Spinner from "../UI/Spinner";
+import { useWorkout } from "../../contexts/WorkoutContext";
+import { format, subDays, parseISO, isThisWeek } from "date-fns";
+import { motion } from "framer-motion";
 
-import { getWeekDates, formatDate } from "../../utils/dateUtils";
-import { getWorkoutLogs } from "../../services/workoutLogService"; // Get the FUNCTION from our service
-import { useQuery } from "@tanstack/react-query";
 interface WeeklySummaryData {
   name: string;
-  date: Date;
-  minutes: number;
+  volume: number;
 }
 
-const WeeklySummaryWidget: React.FC = () => {
-  // === CHANGE 2: Re-introduce the useState for the active bar index ===
-  // This state is purely for UI interaction (hover effects) and belongs here.
-  const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
-  // === END CHANGE ===
-
-  // This useQuery hook for data fetching is correct and remains the same.
-  const { data: allLogs, isLoading } = useQuery({
-    queryKey: ["workoutLogs"],
-    queryFn: getWorkoutLogs,
-  });
-
-  // This useMemo for deriving chart data is also correct.
-  const { chartData, totalWeeklyMinutes } = useMemo(() => {
-    if (!allLogs) {
-      return { chartData: [], totalWeeklyMinutes: 0 };
-    }
-
-    const weekDates = getWeekDates(new Date(), 1);
-    const initialData: WeeklySummaryData[] = weekDates.map((date) => ({
-      name: formatDate(date, "E"),
-      date: date,
-      minutes: 0,
-    }));
-
-    let currentWeekTotal = 0;
-    const processedData = initialData.map((dayData) => {
-      const logsForDay = allLogs.filter(
-        (log) =>
-          new Date(log.date).toDateString() === dayData.date.toDateString()
-      );
-      const totalMinutesForDay = logsForDay.reduce(
-        (sum, log) => sum + (log.durationMinutes || 0),
-        0
-      );
-      currentWeekTotal += totalMinutesForDay;
-      return { ...dayData, minutes: totalMinutesForDay };
-    });
-
-    return {
-      chartData: processedData,
-      totalWeeklyMinutes: currentWeekTotal,
-    };
-  }, [allLogs]);
-
-  // The loading display is correct.
-  if (isLoading) {
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
     return (
-      <Card className="flex items-center justify-center min-h-[200px]">
-        <Spinner size="md" />
-        <p className="ml-2 text-brand-text-muted">Loading weekly summary...</p>
-      </Card>
+      <div className="bg-brand-card/80 backdrop-blur-sm p-2 border border-brand-border rounded-lg shadow-lg">
+        <p className="label text-brand-text-muted">{`${label}`}</p>
+        <p className="intro text-brand-text">{`Volume: ${payload[0].value.toLocaleString()} kg`}</p>
+      </div>
     );
   }
+  return null;
+};
+
+const StatDisplay: React.FC<{ label: string; value: string | number }> = ({
+  label,
+  value,
+}) => (
+  <div>
+    <p className="text-sm text-brand-text-muted">{label}</p>
+    <p className="text-xl font-bold text-brand-text">{value}</p>
+  </div>
+);
+
+const WeeklySummaryWidget: React.FC = () => {
+  const { workouts } = useWorkout();
+  const [activeBarIndex, setActiveBarIndex] = React.useState<number | null>(
+    null
+  );
+
+  const { chartData, totalWeeklyVolume, weeklyWorkoutCount, avgDuration } =
+    useMemo(() => {
+      const weekDates = Array.from({ length: 7 }, (_, i) =>
+        subDays(new Date(), i)
+      ).reverse();
+
+      const thisWeeksWorkouts = workouts.filter((w) =>
+        isThisWeek(parseISO(w.date), { weekStartsOn: 1 })
+      );
+
+      const totalWeeklyVolume = thisWeeksWorkouts.reduce(
+        (sum, w) => sum + w.volume,
+        0
+      );
+      const weeklyWorkoutCount = thisWeeksWorkouts.length;
+      const totalMinutes = thisWeeksWorkouts.reduce(
+        (sum, w) => sum + w.duration,
+        0
+      );
+      const avgDuration =
+        weeklyWorkoutCount > 0
+          ? Math.round(totalMinutes / weeklyWorkoutCount)
+          : 0;
+
+      const dailyData = weekDates.map((day) => {
+        const dayStr = format(day, "yyyy-MM-dd");
+        const dayName = format(day, "eee");
+        const dailyVolume = workouts
+          .filter((w) => format(parseISO(w.date), "yyyy-MM-dd") === dayStr)
+          .reduce((acc, w) => acc + w.volume, 0);
+        return { name: dayName, volume: dailyVolume };
+      });
+
+      return {
+        chartData: dailyData,
+        totalWeeklyVolume,
+        weeklyWorkoutCount,
+        avgDuration,
+      };
+    }, [workouts]);
+
   return (
     <Card>
       <div className="p-4 sm:p-5">
-        <div className="flex justify-between items-center mb-1">
-          <h3 className="text-base sm:text-lg font-semibold text-brand-text">
-            Weekly Activity
-          </h3>
+        <h3 className="text-base sm:text-lg font-semibold text-brand-text mb-4">
+          Weekly Summary
+        </h3>
+        <div className="grid grid-cols-3 gap-4 text-center mb-4">
+          <StatDisplay
+            label="Total Volume"
+            value={`${(totalWeeklyVolume / 1000).toFixed(1)}k kg`}
+          />
+          <StatDisplay label="Workouts" value={weeklyWorkoutCount} />
+          <StatDisplay label="Avg. Duration" value={`${avgDuration} min`} />
         </div>
-        <p className="text-2xl sm:text-3xl font-bold text-brand-primary mb-3">
-          {totalWeeklyMinutes}{" "}
-          <span className="text-sm font-medium text-brand-text-muted">
-            total minutes
-          </span>
-        </p>
       </div>
 
-      {chartData.some((d) => d.minutes > 0) ? (
+      <div className="px-2">
         <ResponsiveContainer width="100%" height={200}>
           <BarChart
             data={chartData}
-            margin={{ top: 0, right: 5, left: -25, bottom: 0 }}
+            margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
             barCategoryGap="30%"
+            onMouseLeave={() => setActiveBarIndex(null)}
           >
-            <CartesianGrid
-              strokeDasharray="4 4"
-              stroke="rgb(var(--color-border) / 0.2)"
-              vertical={false}
-            />
             <XAxis
               dataKey="name"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              stroke="var(--color-text-muted)"
+            />
+            <YAxis
               fontSize={10}
               tickLine={false}
               axisLine={false}
+              stroke="var(--color-text-muted)"
+              tickFormatter={(value) => `${Math.round(value / 1000)}k`}
             />
-            <YAxis fontSize={10} tickLine={false} axisLine={false} />
             <Tooltip
+              content={<CustomTooltip />}
               cursor={{ fill: "rgb(var(--color-primary-rgb) / 0.1)" }}
-              formatter={(value: number) => [`${value} minutes`, "Activity"]}
             />
             <Bar
-              dataKey="minutes"
+              dataKey="volume"
+              onMouseEnter={(_, index) => setActiveBarIndex(index)}
               radius={[4, 4, 0, 0]}
-              onMouseEnter={(data, index) => setActiveBarIndex(index)}
-              onMouseLeave={() => setActiveBarIndex(null)}
             >
-              {chartData.map((entry, index) => (
+              {chartData.map((_entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={
@@ -135,11 +149,7 @@ const WeeklySummaryWidget: React.FC = () => {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      ) : (
-        <div className="p-4 pt-0 text-center text-brand-text-muted min-h-[150px] flex items-center justify-center">
-          No workout data recorded for this week yet.
-        </div>
-      )}
+      </div>
     </Card>
   );
 };

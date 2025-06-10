@@ -1,70 +1,75 @@
 // /src/components/Workout/WorkoutLogForm.tsx
-import React, { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
-import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
+import React, { useState, useMemo, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Program,
-  WorkoutLog,
-  MasterExercise,
-  Exercise,
-  CompletedSet,
-  CompletedExercise,
-} from "../../types/data";
-import { getProgramById } from "../../services/programService";
-import { saveWorkoutLog } from "../../services/workoutLogService";
-import Button from "../UI/Button";
-import ExerciseLogRow from "./ExerciseLogRow";
-import Timer from "./Timer";
-import { useLocation, useNavigate, Link } from "react-router-dom";
-import { formatDate } from "../../utils/dateUtils";
-import Spinner from "../UI/Spinner";
-import { useAuth } from "../../contexts/AuthContext";
+  useForm,
+  SubmitHandler,
+  useFieldArray,
+  Controller,
+} from "react-hook-form";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useWorkout } from "../../contexts/WorkoutContext";
-import { getMasterExercises } from "../../services/masterExerciseService";
 import { generateUUID } from "../../utils/uuid";
 import {
-  DocumentTextIcon,
-  CalendarDaysIcon,
-  CheckCircleIcon,
-  ArrowUturnLeftIcon,
-} from "@heroicons/react/24/outline";
+  Workout,
+  Exercise as WorkoutExercise,
+  Set as WorkoutSet,
+} from "../../types";
+import { getProgramById } from "../../services/programService";
+import { useQuery } from "@tanstack/react-query";
+import Button from "../UI/Button";
+import Timer from "./Timer";
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import Spinner from "../UI/Spinner";
 
-interface WorkoutLogFormProps {}
+type WorkoutFormData = Workout;
 
-type LoggedSet = {
-  id: string;
-  reps: number | null;
-  weight: number | null;
-  completed: boolean;
+const parseReps = (reps: string): number => {
+  if (!reps) return 0;
+  const match = reps.match(/^\d+/);
+  return match ? parseInt(match[0], 10) : 0;
 };
 
-type LoggedExercise = {
-  exerciseId: string;
-  exerciseName: string;
-  targetSets: number;
-  targetReps: string;
-  sets: LoggedSet[];
+const exerciseListVariants = {
+  visible: {
+    opacity: 1,
+    transition: {
+      when: "beforeChildren",
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+  hidden: { opacity: 0 },
 };
 
-type WorkoutFormData = {
-  programId: string;
-  programTitle: string;
-  date: string;
-  loggedExercises: LoggedExercise[];
-  notes?: string;
+const exerciseItemVariants = {
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { type: "spring", stiffness: 300, damping: 24, mass: 0.5 },
+  },
+  hidden: { opacity: 0, x: -40 },
+  exit: {
+    opacity: 0,
+    height: 0,
+    scale: 0.9,
+    paddingTop: 0,
+    paddingBottom: 0,
+    marginTop: 0,
+    marginBottom: 0,
+    transition: {
+      type: "spring",
+      stiffness: 400,
+      damping: 20,
+    },
+  },
 };
 
-const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
-  const { user } = useAuth();
-  const location = useLocation();
+const WorkoutLogForm: React.FC = () => {
   const navigate = useNavigate();
-  const queryParams = new URLSearchParams(location.search);
-  const preSelectedProgramId = queryParams.get("programId");
-  const preSelectedDate =
-    queryParams.get("date") || formatDate(new Date(), "yyyy-MM-dd");
-
-  const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
-  const [isLoadingProgram, setIsLoadingProgram] = useState(false);
+  const [searchParams] = useSearchParams();
+  const programId = searchParams.get("programId");
+  const { actions } = useWorkout();
   const [activeTimerExerciseIndex, setActiveTimerExerciseIndex] = useState<
     number | null
   >(null);
@@ -72,369 +77,293 @@ const WorkoutLogForm: React.FC<WorkoutLogFormProps> = () => {
   const workoutStartTime = useMemo(() => new Date(), []);
 
   const {
-    register,
+    data: program,
+    isLoading: isProgramLoading,
+    isError: isProgramError,
+  } = useQuery({
+    queryKey: ["program", programId],
+    queryFn: () => getProgramById(programId!),
+    enabled: !!programId,
+  });
+
+  const {
     control,
     handleSubmit,
-    reset,
     watch,
+    reset,
     formState: { isSubmitting },
-    getValues,
   } = useForm<WorkoutFormData>({
     defaultValues: {
-      programId: preSelectedProgramId || "",
-      programTitle: "",
-      date: preSelectedDate,
-      loggedExercises: [],
-      notes: "",
+      id: generateUUID(),
+      name: "New Workout",
+      date: new Date().toISOString().split("T")[0],
+      exercises: [],
+      duration: 0,
+      volume: 0,
     },
   });
 
-  const { fields, update } = useFieldArray({
-    control,
-    name: "loggedExercises",
-  });
-
-  const watchedProgramId = watch("programId");
-  const watchedLoggedExercises = watch("loggedExercises");
-  const { addExercisedMuscleGroup } = useWorkout();
-
   useEffect(() => {
-    if (watchedProgramId) {
-      setIsLoadingProgram(true);
-      getProgramById(watchedProgramId)
-        .then((prog) => {
-          if (prog) {
-            setSelectedProgram(prog);
-            const initialLoggedExercises = prog.exercises.map(
-              (ex: Exercise) => ({
-                exerciseId: ex.id,
-                exerciseName: ex.name,
-                targetSets: ex.sets,
-                targetReps: ex.reps,
-                sets: Array(ex.sets)
-                  .fill(null)
-                  .map(() => ({
-                    id: generateUUID(),
-                    reps: null,
-                    weight: null,
-                    completed: false,
-                  })),
-              })
-            );
-            reset({
-              programId: prog.id,
-              programTitle: prog.title,
-              date: preSelectedDate,
-              loggedExercises: initialLoggedExercises,
-              notes: "",
-            });
-          }
-        })
-        .catch(console.error)
-        .finally(() => setIsLoadingProgram(false));
-    } else {
-      setSelectedProgram(null);
-      reset({
-        programId: "",
-        programTitle: "",
-        date: preSelectedDate,
-        loggedExercises: [],
-        notes: "",
-      });
-    }
-  }, [watchedProgramId, reset, preSelectedDate]);
-
-  const onSubmitHandler: SubmitHandler<WorkoutFormData> = async (data) => {
-    if (!user) {
-      console.error("Cannot log workout, no user is logged in.");
-      return;
-    }
-
-    const totalVolume = data.loggedExercises.reduce(
-      (sum, le) =>
-        sum +
-        le.sets.reduce(
-          (setSum, s) => setSum + (s.reps || 0) * (s.weight || 0),
-          0
-        ),
-      0
-    );
-
-    const workoutLogToSave: Omit<WorkoutLog, "id"> = {
-      userId: user.id,
-      programId: data.programId,
-      programTitle: data.programTitle,
-      date: data.date,
-      durationMinutes: Math.round(
-        (new Date().getTime() - workoutStartTime.getTime()) / 60000
-      ),
-      caloriesBurned: Math.round(totalVolume * 0.05),
-      notes: data.notes,
-      completedExercises: data.loggedExercises.map(
-        (le): CompletedExercise => ({
-          exerciseId: le.exerciseId,
-          exerciseName: le.exerciseName,
-          sets: le.sets.map(
-            (s): CompletedSet => ({
-              reps: s.reps === null ? 0 : Number(s.reps),
-              weight: s.weight === null ? 0 : Number(s.weight),
-              completed: s.completed,
+    if (program) {
+      const newExercises: WorkoutExercise[] = program.exercises.map(
+        (programExercise) => {
+          const sets: WorkoutSet[] = Array.from(
+            { length: programExercise.sets },
+            () => ({
+              id: generateUUID(),
+              reps: parseReps(programExercise.reps),
+              weight: 0,
+              completed: false,
             })
-          ),
-        })
-      ),
-    };
+          );
 
-    try {
-      const savedLog = await saveWorkoutLog(workoutLogToSave);
-
-      const masterExercises: MasterExercise[] = await getMasterExercises();
-      const exerciseIdToBodyPart = new Map<string, string>(
-        masterExercises.map((ex: MasterExercise) => [ex.id, ex.bodyPart])
+          return {
+            id: generateUUID(),
+            name: programExercise.name,
+            type: "strength", // Defaulting to strength
+            muscleGroups: [], // Program exercises don't have muscle groups defined in this structure
+            sets: sets,
+          };
+        }
       );
 
-      const bodyPartToUIGroupMap: { [key: string]: string[] } = {
-        Arms: ["Biceps", "Triceps"],
-        "Full Body": ["Chest", "Back", "Legs", "Core", "Shoulders"],
-      };
-
-      data.loggedExercises.forEach((le) => {
-        const bodyPart = exerciseIdToBodyPart.get(le.exerciseId);
-        if (bodyPart) {
-          if (bodyPartToUIGroupMap[bodyPart]) {
-            bodyPartToUIGroupMap[bodyPart].forEach((group) => {
-              addExercisedMuscleGroup(group);
-            });
-          } else {
-            addExercisedMuscleGroup(bodyPart);
-          }
-        }
+      reset({
+        id: generateUUID(),
+        name: `${program.title}`,
+        date: new Date().toISOString().split("T")[0],
+        exercises: newExercises,
+        duration: 0,
+        volume: 0,
       });
-
-      navigate(`/history?highlight=${savedLog.date}`);
-    } catch (error) {
-      console.error("Failed to log workout:", error);
     }
+  }, [program, reset]);
+
+  const { fields, append, remove, update } = useFieldArray({
+    control,
+    name: "exercises",
+  });
+
+  const onSubmitHandler: SubmitHandler<WorkoutFormData> = (data) => {
+    const workoutToSave: Workout = {
+      ...data,
+      duration: Math.round(
+        (new Date().getTime() - workoutStartTime.getTime()) / 60000
+      ),
+      exercises: data.exercises.map((ex) => ({
+        ...ex,
+        sets: ex.sets.map((set) => ({
+          ...set,
+          weight: Number(set.weight),
+          reps: Number(set.reps),
+        })),
+      })),
+    };
+
+    actions.addWorkout(workoutToSave);
+    navigate("/analytics");
   };
 
-  const handleSetChange = (
-    exerciseIndex: number,
-    setIndex: number,
-    field: keyof LoggedSet,
-    value: string | number | boolean
-  ) => {
-    const loggedExercises = getValues("loggedExercises");
-    const updatedExercise = { ...loggedExercises[exerciseIndex] };
-    const updatedSet = { ...updatedExercise.sets[setIndex] };
-
-    let processedValue: number | boolean | null = null;
-    if (field === "reps" || field === "weight") {
-      const numValue = parseFloat(value as string);
-      processedValue = isNaN(numValue) ? null : numValue;
-    } else if (field === "completed") {
-      processedValue = Boolean(value);
-    }
-
-    (updatedSet[field] as any) = processedValue;
-    updatedExercise.sets[setIndex] = updatedSet;
-    update(exerciseIndex, updatedExercise);
+  const addExercise = () => {
+    append({
+      id: generateUUID(),
+      name: "New Exercise",
+      type: "strength",
+      sets: [],
+      muscleGroups: [],
+    });
   };
 
   const addSet = (exerciseIndex: number) => {
-    const loggedExercises = getValues("loggedExercises");
-    const updatedExercise = { ...loggedExercises[exerciseIndex] };
-    updatedExercise.sets.push({
-      id: generateUUID(),
-      reps: null,
-      weight: null,
-      completed: false,
-    });
-    update(exerciseIndex, updatedExercise);
+    const exercise = watch(`exercises.${exerciseIndex}`);
+    const updatedSets = [
+      ...exercise.sets,
+      { id: generateUUID(), reps: 0, weight: 0, completed: false },
+    ];
+    update(exerciseIndex, { ...exercise, sets: updatedSets });
   };
 
   const removeSet = (exerciseIndex: number, setIndex: number) => {
-    const loggedExercises = getValues("loggedExercises");
-    const updatedExercise = { ...loggedExercises[exerciseIndex] };
-    updatedExercise.sets.splice(setIndex, 1);
-    update(exerciseIndex, updatedExercise);
+    const exercise = watch(`exercises.${exerciseIndex}`);
+    const updatedSets = exercise.sets.filter((_, i) => i !== setIndex);
+    update(exerciseIndex, { ...exercise, sets: updatedSets });
   };
 
-  const handleTimerStart = (duration: number) => {
-    setActiveTimerExerciseIndex(duration);
-  };
-
-  const handleTimerComplete = () => {
-    setActiveTimerExerciseIndex(null);
-  };
-
-  const pageVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { type: "spring", stiffness: 100 },
-    },
-  };
-
-  if (isLoadingProgram) {
+  if (isProgramLoading) {
     return (
-      <div className="p-6 flex justify-center items-center h-64">
+      <div className="flex justify-center items-center h-64">
         <Spinner />
+        <p className="ml-4 text-brand-text-muted">Loading program...</p>
       </div>
     );
   }
 
-  if (!preSelectedProgramId) {
+  if (isProgramError) {
     return (
-      <motion.div
-        variants={pageVariants}
-        initial="hidden"
-        animate="visible"
-        className="p-6 bg-brand-card/80 backdrop-blur-sm border border-white/10 rounded-lg shadow-lg text-center text-brand-text max-w-md mx-auto"
-      >
-        <motion.p variants={itemVariants} className="mb-4 text-lg">
-          Please select a program to log a workout.
-        </motion.p>
-        <motion.div variants={itemVariants}>
-          <Button
-            as={Link}
-            to="/programs"
-            variant="primary"
-            className="text-brand-primary hover:underline"
-          >
-            Go to Programs
-          </Button>
-        </motion.div>
-      </motion.div>
+      <div className="text-center py-10">
+        <h2 className="text-xl text-error font-semibold">
+          Error Loading Program
+        </h2>
+        <p className="text-brand-text-muted mt-2">
+          There was a problem fetching the program details.
+        </p>
+      </div>
     );
   }
 
   return (
-    <motion.div
-      variants={pageVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-4xl mx-auto"
-    >
-      <form onSubmit={handleSubmit(onSubmitHandler)}>
-        <motion.div
-          variants={itemVariants}
-          className="flex flex-col sm:flex-row justify-between sm:items-center mb-8"
-        >
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-brand-text tracking-tight">
-              Log Workout
-            </h1>
-            <div className="flex items-center gap-4 mt-2 text-brand-text-muted">
-              <div className="flex items-center gap-1.5">
-                <DocumentTextIcon className="h-5 w-5" />
-                <span className="font-medium">
-                  {selectedProgram?.title || "Custom Workout"}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <CalendarDaysIcon className="h-5 w-5" />
-                <span className="font-medium">
-                  {formatDate(new Date(preSelectedDate), "EEEE, d MMMM")}
-                </span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+    <form onSubmit={handleSubmit(onSubmitHandler)} className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-brand-card p-4 rounded-lg shadow-lg"
+      >
+        <Controller
+          name="name"
+          control={control}
+          render={({ field }) => (
+            <input
+              {...field}
+              className="text-2xl font-bold bg-transparent border-b-2 border-brand-border focus:outline-none focus:border-brand-primary w-full"
+            />
+          )}
+        />
+        <Controller
+          name="date"
+          control={control}
+          render={({ field }) => (
+            <input
+              {...field}
+              type="date"
+              className="mt-2 text-sm text-brand-text-muted bg-transparent focus:outline-none"
+            />
+          )}
+        />
+      </motion.div>
 
-        {fields.length > 0 && (
-          <motion.div
-            className="space-y-4"
-            variants={{ visible: { transition: { staggerChildren: 0.07 } } }}
-            initial="hidden"
-            animate="visible"
-          >
-            {fields.map((field, index) => {
-              const exerciseData = selectedProgram?.exercises.find(
-                (ex) => ex.id === field.exerciseId
-              );
-              if (!exerciseData) return null;
-
-              return (
-                <ExerciseLogRow
-                  key={field.id}
-                  exercise={exerciseData}
-                  loggedSets={watchedLoggedExercises[index].sets}
-                  onSetChange={(setIndex, fieldName, value) =>
-                    handleSetChange(index, setIndex, fieldName, value)
-                  }
-                  onTimerStart={() =>
-                    handleTimerStart(exerciseData.restInterval)
-                  }
-                  isTimerActive={
-                    activeTimerExerciseIndex === exerciseData.restInterval
-                  }
-                  onAddSet={() => addSet(index)}
-                  onRemoveSet={(setIndex) => removeSet(index, setIndex)}
+      <motion.div
+        layout
+        variants={exerciseListVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-4"
+      >
+        <AnimatePresence>
+          {fields.map((field, index) => (
+            <motion.div
+              key={field.id}
+              layout="position"
+              variants={exerciseItemVariants}
+              className="bg-brand-card p-4 rounded-lg shadow-lg space-y-3 overflow-hidden"
+            >
+              <div className="flex justify-between items-center">
+                <Controller
+                  name={`exercises.${index}.name`}
+                  control={control}
+                  render={({ field }) => (
+                    <input
+                      {...field}
+                      placeholder="Exercise Name"
+                      className="font-semibold bg-transparent border-b border-brand-border focus:outline-none w-full"
+                    />
+                  )}
                 />
-              );
-            })}
-          </motion.div>
-        )}
+                <button
+                  type="button"
+                  onClick={() => remove(index)}
+                  className="text-red-500 hover:text-red-400"
+                >
+                  <TrashIcon className="w-5 h-5" />
+                </button>
+              </div>
 
-        <motion.div variants={itemVariants} className="mt-8">
-          <label
-            htmlFor="notes"
-            className="block text-sm font-medium text-brand-text-muted mb-2"
-          >
-            Workout Notes
-          </label>
-          <textarea
-            id="notes"
-            {...register("notes")}
-            rows={4}
-            className="w-full bg-brand-card/50 backdrop-blur-sm border-2 border-white/10 rounded-lg p-3 focus:ring-brand-primary focus:border-brand-primary transition-colors placeholder:text-brand-text-muted/60"
-            placeholder="How did the workout feel? Any PRs?"
-          ></textarea>
-        </motion.div>
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-2 text-xs text-brand-text-muted">
+                  <span>Set</span>
+                  <span>Weight (kg)</span>
+                  <span>Reps</span>
+                  <span>Done</span>
+                </div>
+                {watch(`exercises.${index}.sets`).map((set, setIndex) => (
+                  <div
+                    key={set.id}
+                    className="grid grid-cols-4 gap-2 items-center"
+                  >
+                    <span className="font-bold">{setIndex + 1}</span>
+                    <Controller
+                      name={`exercises.${index}.sets.${setIndex}.weight`}
+                      control={control}
+                      render={({ field }) => (
+                        <input
+                          {...field}
+                          type="number"
+                          className="bg-brand-secondary rounded p-1 w-full"
+                        />
+                      )}
+                    />
+                    <Controller
+                      name={`exercises.${index}.sets.${setIndex}.reps`}
+                      control={control}
+                      render={({ field }) => (
+                        <input
+                          {...field}
+                          type="number"
+                          className="bg-brand-secondary rounded p-1 w-full"
+                        />
+                      )}
+                    />
+                    <Controller
+                      name={`exercises.${index}.sets.${setIndex}.completed`}
+                      control={control}
+                      render={({ field: { onChange, onBlur, value, ref } }) => (
+                        <input
+                          type="checkbox"
+                          onBlur={onBlur}
+                          onChange={onChange}
+                          checked={value}
+                          ref={ref}
+                          className="h-5 w-5 rounded bg-brand-secondary text-brand-primary focus:ring-brand-primary"
+                        />
+                      )}
+                    />
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => addSet(index)}
+              >
+                Add Set
+              </Button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
 
-        <motion.div
-          variants={itemVariants}
-          className="mt-8 flex justify-end space-x-4"
-        >
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate(-1)}
-            leftIcon={<ArrowUturnLeftIcon className="h-5 w-5" />}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={isSubmitting}
-            leftIcon={
-              isSubmitting ? null : <CheckCircleIcon className="h-5 w-5" />
-            }
-            className="min-w-[200px]"
-          >
-            {isSubmitting ? <Spinner size="sm" /> : "Finish & Save Workout"}
-          </Button>
-        </motion.div>
-      </form>
+      <Button
+        type="button"
+        onClick={addExercise}
+        leftIcon={<PlusIcon className="w-5 h-5" />}
+      >
+        Add Exercise
+      </Button>
+
+      <div className="flex justify-end space-x-4 pt-4 border-t border-brand-border">
+        <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : "Save Workout"}
+        </Button>
+      </div>
       {activeTimerExerciseIndex !== null && (
         <Timer
-          durationSeconds={activeTimerExerciseIndex}
-          onComplete={handleTimerComplete}
+          durationSeconds={60}
+          onComplete={() => setActiveTimerExerciseIndex(null)}
         />
       )}
-    </motion.div>
+    </form>
   );
 };
 

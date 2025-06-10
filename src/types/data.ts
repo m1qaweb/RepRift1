@@ -46,7 +46,7 @@ export interface Exercise {
   name: string;
   sets: number;
   reps: string;
-  restInterval: number;
+  weight: number;
 }
 
 export interface Program {

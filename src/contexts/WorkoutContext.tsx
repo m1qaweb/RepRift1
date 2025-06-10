@@ -4,21 +4,24 @@ import React, {
   useState,
   ReactNode,
   useEffect,
+  useMemo,
+  useCallback,
 } from "react";
+import {
+  Workout,
+  PersonalRecord,
+  WorkoutContextType,
+  WorkoutState,
+} from "../types"; // <-- Updated import
 
-const LOCAL_STORAGE_KEY = "exercisedMuscleGroups";
-const TWENTY_FOUR_HOURS_IN_MS = 24 * 60 * 60 * 1000;
+const WORKOUT_DATA_KEY = "workoutHistory";
 
-interface ExercisedMuscleEntry {
-  group: string;
-  timestamp: number;
-}
-
-interface WorkoutContextType {
-  exercisedMuscleGroups: string[];
-  addExercisedMuscleGroup: (group: string) => void;
-  clearExercisedMuscleGroups: () => void;
-}
+// Epley formula for estimating 1 Rep Max
+const calculateEpley1RM = (weight: number, reps: number): number => {
+  if (reps === 1) return weight;
+  if (reps === 0) return 0;
+  return weight * (1 + reps / 30);
+};
 
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
@@ -37,57 +40,161 @@ interface WorkoutProviderProps {
 export const WorkoutProvider: React.FC<WorkoutProviderProps> = ({
   children,
 }) => {
-  const [exercisedMuscles, setExercisedMuscles] = useState<
-    ExercisedMuscleEntry[]
-  >([]);
+  const [state, setState] = useState<WorkoutState>({
+    workouts: [],
+    personalRecords: {},
+    loading: true,
+  });
 
+  // Load data from localStorage on initial render
   useEffect(() => {
     try {
-      const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const storedData = localStorage.getItem(WORKOUT_DATA_KEY);
       if (storedData) {
-        const parsedData: ExercisedMuscleEntry[] = JSON.parse(storedData);
-        const now = Date.now();
-
-        const recentMuscles = parsedData.filter(
-          (entry) => now - entry.timestamp < TWENTY_FOUR_HOURS_IN_MS
-        );
-
-        setExercisedMuscles(recentMuscles);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(recentMuscles));
+        const parsedData: WorkoutState = JSON.parse(storedData);
+        setState({ ...parsedData, loading: false });
+      } else {
+        setState((s) => ({ ...s, loading: false }));
       }
     } catch (error) {
-      console.error(
-        "Failed to load or parse exercised muscle data from localStorage",
-        error
-      );
-      setExercisedMuscles([]);
+      console.error("Failed to load workout data from localStorage", error);
+      setState((s) => ({ ...s, loading: false }));
     }
   }, []);
 
-  const addExercisedMuscleGroup = (group: string) => {
-    setExercisedMuscles((prevMuscles) => {
-      const now = Date.now();
-      const newEntry: ExercisedMuscleEntry = { group, timestamp: now };
+  // Persist state to localStorage whenever it changes
+  useEffect(() => {
+    if (!state.loading) {
+      localStorage.setItem(WORKOUT_DATA_KEY, JSON.stringify(state));
+    }
+  }, [state]);
 
-      // Remove any existing entry for the same group to update its timestamp
-      const otherMuscles = prevMuscles.filter((entry) => entry.group !== group);
-      const updatedMuscles = [...otherMuscles, newEntry];
+  const calculateAllStats = useCallback(
+    (workouts: Workout[]): { [key: string]: PersonalRecord } => {
+      const allPrs: { [key: string]: PersonalRecord } = {};
 
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedMuscles));
-      return updatedMuscles;
-    });
-  };
+      workouts.forEach((workout) => {
+        workout.exercises.forEach((exercise) => {
+          if (!allPrs[exercise.name]) {
+            // Initialize PR for this exercise
+            allPrs[exercise.name] = {
+              exerciseName: exercise.name,
+              estimated1RM: { value: 0, date: "" },
+              highestWeight: { value: 0, date: "" },
+              highestReps: { value: 0, weight: 0, date: "" },
+              highestSetVolume: { value: 0, date: "" },
+            };
+          }
 
-  const clearExercisedMuscleGroups = () => {
-    setExercisedMuscles([]);
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-  };
+          const currentPr = allPrs[exercise.name];
 
-  const value = {
-    exercisedMuscleGroups: exercisedMuscles.map((e) => e.group),
-    addExercisedMuscleGroup,
-    clearExercisedMuscleGroups,
-  };
+          exercise.sets.forEach((set) => {
+            if (!set.completed) return;
+
+            // Check for e1RM PR
+            const e1RM = calculateEpley1RM(set.weight, set.reps);
+            if (e1RM > currentPr.estimated1RM.value) {
+              currentPr.estimated1RM = { value: e1RM, date: workout.date };
+            }
+
+            // Check for highest weight PR
+            if (set.weight > currentPr.highestWeight.value) {
+              currentPr.highestWeight = {
+                value: set.weight,
+                date: workout.date,
+              };
+            }
+
+            // Check for highest reps PR
+            if (set.reps > currentPr.highestReps.value) {
+              currentPr.highestReps = {
+                value: set.reps,
+                weight: set.weight,
+                date: workout.date,
+              };
+            }
+
+            // Check for highest set volume PR
+            const setVolume = set.reps * set.weight;
+            if (setVolume > currentPr.highestSetVolume.value) {
+              currentPr.highestSetVolume = {
+                value: setVolume,
+                date: workout.date,
+              };
+            }
+          });
+        });
+      });
+      return allPrs;
+    },
+    []
+  );
+
+  const addWorkout = useCallback(
+    (newWorkout: Workout) => {
+      // Recalculate total volume for the workout
+      const totalVolume = newWorkout.exercises.reduce((total, exercise) => {
+        return (
+          total +
+          exercise.sets.reduce((exTotal, set) => {
+            return exTotal + (set.completed ? set.weight * set.reps : 0);
+          }, 0)
+        );
+      }, 0);
+      newWorkout.volume = totalVolume;
+
+      const updatedWorkouts = [...state.workouts, newWorkout];
+      const newPrs = calculateAllStats(updatedWorkouts);
+
+      setState({
+        loading: false,
+        workouts: updatedWorkouts,
+        personalRecords: newPrs,
+      });
+    },
+    [state.workouts, calculateAllStats]
+  );
+
+  const updateWorkout = useCallback(
+    (updatedWorkout: Workout) => {
+      const updatedWorkouts = state.workouts.map((w) =>
+        w.id === updatedWorkout.id ? updatedWorkout : w
+      );
+      const newPrs = calculateAllStats(updatedWorkouts);
+      setState({
+        loading: false,
+        workouts: updatedWorkouts,
+        personalRecords: newPrs,
+      });
+    },
+    [state.workouts, calculateAllStats]
+  );
+
+  const deleteWorkout = useCallback(
+    (workoutId: string) => {
+      const updatedWorkouts = state.workouts.filter((w) => w.id !== workoutId);
+      const newPrs = calculateAllStats(updatedWorkouts);
+      setState({
+        loading: false,
+        workouts: updatedWorkouts,
+        personalRecords: newPrs,
+      });
+    },
+    [state.workouts, calculateAllStats]
+  );
+
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(
+    () => ({
+      ...state,
+      actions: {
+        addWorkout,
+        updateWorkout,
+        deleteWorkout,
+      },
+    }),
+    [state, addWorkout, updateWorkout, deleteWorkout]
+  );
 
   return (
     <WorkoutContext.Provider value={value}>{children}</WorkoutContext.Provider>

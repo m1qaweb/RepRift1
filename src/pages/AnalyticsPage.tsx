@@ -1,126 +1,63 @@
 // /src/pages/AnalyticsPage.tsx
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
-import { useAuth } from "../contexts/AuthContext";
-import { BodyMetric, WorkoutLog } from "../types/data";
-import { getBodyMetrics } from "../services/bodyMetricService";
-import { getWorkoutLogs } from "../services/workoutLogService";
-import { formatDate } from "../utils/dateUtils";
-
-import ProgressChart from "../components/Analytics/ProgressChart";
+import { useWorkout } from "../contexts/WorkoutContext";
 import StatsCard from "../components/Analytics/StatsCard";
 import Spinner from "../components/UI/Spinner";
-import Card from "../components/UI/Card";
 import {
   ChartBarIcon,
   BoltIcon,
   ClockIcon,
-  FireIcon,
-  ArrowTrendingUpIcon,
   TrophyIcon,
-  ArrowPathIcon,
   ScaleIcon,
+  StarIcon,
 } from "@heroicons/react/24/outline";
-import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
-
-// calculateBMI helper function (no changes needed)
-const calculateBMI = (w?: number, h?: number) =>
-  w && h && h > 0 ? parseFloat((w / (h / 100) ** 2).toFixed(1)) : undefined;
+import { subDays, parseISO, isAfter } from "date-fns";
 
 const AnalyticsPage: React.FC = () => {
-  const { user } = useAuth();
-  const [data, setData] = useState<{
-    metrics: BodyMetric[];
-    logs: WorkoutLog[];
-  }>({ metrics: [], logs: [] });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { workouts, personalRecords, loading } = useWorkout();
 
-  // <<< FIX #1: Wrap the data loading logic in useCallback
-  const loadData = useCallback(async () => {
-    if (!user) return; // The dependency 'user' is now declared below
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [metricsData, logsData] = await Promise.all([
-        getBodyMetrics(),
-        getWorkoutLogs(),
-      ]);
-      const sortedMetrics = metricsData.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-      const sortedLogs = logsData.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-      setData({ metrics: sortedMetrics, logs: sortedLogs });
-    } catch (err) {
-      console.error("Failed to fetch analytics data:", err);
-      setError("Could not load analytics data.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]); // <<< This useCallback depends on 'user'
-
-  useEffect(() => {
-    loadData();
-    // <<< FIX #2: Add the stable `loadData` function to the dependency array.
-    // The ESLint warning is now resolved correctly.
-  }, [loadData]);
-
-  // --- DERIVED STATISTICS ---
-
-  const { recentStats, allTimeStats, bodyTrends } = useMemo(() => {
-    const { metrics, logs } = data;
-    const last30Days = new Date();
-    last30Days.setDate(last30Days.getDate() - 30);
-    const recentLogs = logs.filter((log) => new Date(log.date) >= last30Days);
-
-    const workoutsThisMonth = recentLogs.length;
-    const totalDuration = recentLogs.reduce((s, l) => s + l.durationMinutes, 0);
-    const totalCalories = recentLogs.reduce((s, l) => s + l.caloriesBurned, 0);
-
-    const allTimeWorkouts = logs.length;
-    const allTimeDurationHours = Math.round(
-      logs.reduce((s, l) => s + l.durationMinutes, 0) / 60
+  const analytics = useMemo(() => {
+    const last30Days = subDays(new Date(), 30);
+    const workoutsLast30Days = workouts.filter((w) =>
+      isAfter(parseISO(w.date), last30Days)
     );
 
-    const weightChange =
-      metrics.length < 2
-        ? 0
-        : parseFloat(
-            (
-              metrics[metrics.length - 1].weightKg - metrics[0].weightKg
-            ).toFixed(1)
-          );
-    const latestWeight =
-      metrics.length > 0 ? metrics[metrics.length - 1].weightKg : "N/A";
+    const monthlyWorkouts = workoutsLast30Days.length;
+    const monthlyVolume = workoutsLast30Days.reduce(
+      (sum, w) => sum + w.volume,
+      0
+    );
+
+    const allPrs = Object.values(personalRecords);
+    const monthlyPrs = allPrs.filter((pr) =>
+      isAfter(parseISO(pr.estimated1RM.date), last30Days)
+    ).length;
+
+    const totalVolume = workouts.reduce((sum, w) => sum + w.volume, 0);
+
+    const topSet = allPrs.reduce(
+      (max, pr) => (pr.estimated1RM.value > max.estimated1RM.value ? pr : max),
+      {
+        estimated1RM: { value: 0, date: "" },
+        exerciseName: "",
+        highestReps: { value: 0, weight: 0, date: "" },
+        highestSetVolume: { value: 0, date: "" },
+        highestWeight: { value: 0, date: "" },
+      }
+    );
 
     return {
-      recentStats: {
-        workoutsThisMonth,
-        avgDuration:
-          workoutsThisMonth > 0
-            ? Math.round(totalDuration / workoutsThisMonth)
-            : 0,
-        avgCalories:
-          workoutsThisMonth > 0
-            ? Math.round(totalCalories / workoutsThisMonth)
-            : 0,
-      },
-      allTimeStats: { allTimeWorkouts, allTimeDurationHours, latestWeight },
-      bodyTrends: { weightChange },
+      monthlyWorkouts,
+      monthlyVolume,
+      monthlyPrs,
+      allTimeVolume: totalVolume,
+      allTimePrs: allPrs.length,
+      topSet,
     };
-  }, [data]);
+  }, [workouts, personalRecords]);
 
-  const chartData = useMemo(() => {
-    return data.metrics.map((m) => ({
-      date: formatDate(m.date, "MMM d"),
-      Weight: m.weightKg,
-      BMI: m.bmi ?? calculateBMI(m.weightKg, user?.heightCm),
-    }));
-  }, [data.metrics, user?.heightCm]);
-
-  // Animation Variants (no changes)
+  // Animation Variants
   const containerVariant = {
     hidden: {},
     visible: { transition: { staggerChildren: 0.1 } },
@@ -134,21 +71,13 @@ const AnalyticsPage: React.FC = () => {
     },
   };
 
-  // RENDER LOGIC
-  if (isLoading)
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
         <Spinner size="lg" />
       </div>
     );
-  if (error)
-    return (
-      <div className="flex flex-col items-center justify-center h-96 text-center">
-        <ExclamationTriangleIcon className="w-12 h-12 text-error mb-4" />
-        <h2 className="text-2xl font-semibold">Error Loading Data</h2>
-        <p className="text-brand-text-muted">{error}</p>
-      </div>
-    );
+  }
 
   return (
     <motion.div
@@ -157,27 +86,16 @@ const AnalyticsPage: React.FC = () => {
       initial="hidden"
       animate="visible"
     >
-      <motion.div
-        variants={itemVariant}
-        className="flex justify-between items-center"
-      >
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-brand-text">
-            Your Analytics
-          </h1>
-          <p className="text-lg text-brand-text-muted">
-            An overview of your fitness journey.
-          </p>
-        </div>
-        <button
-          onClick={() => loadData()}
-          className="p-2 text-brand-text-muted hover:text-brand-primary hover:bg-brand-secondary/20 rounded-full transition-colors"
-        >
-          <ArrowPathIcon className="h-5 w-5" />
-        </button>
+      <motion.div variants={itemVariant}>
+        <h1 className="text-3xl sm:text-4xl font-bold text-brand-text">
+          Your Analytics
+        </h1>
+        <p className="text-lg text-brand-text-muted">
+          An overview of your fitness journey.
+        </p>
       </motion.div>
 
-      {data.logs.length === 0 && data.metrics.length === 0 ? (
+      {workouts.length === 0 ? (
         <motion.div
           variants={itemVariant}
           className="flex flex-col items-center justify-center h-96 text-center"
@@ -187,8 +105,8 @@ const AnalyticsPage: React.FC = () => {
             Your Analytics Dashboard Awaits
           </h2>
           <p className="text-brand-text-muted max-w-md">
-            Log a workout or add a body weight measurement to start tracking
-            your progress and unlocking powerful insights!
+            Log a workout to start tracking your progress and unlocking powerful
+            insights!
           </p>
         </motion.div>
       ) : (
@@ -200,60 +118,21 @@ const AnalyticsPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <StatsCard
                 title="Workouts"
-                value={recentStats.workoutsThisMonth}
+                value={analytics.monthlyWorkouts}
                 icon={<BoltIcon className="w-6 h-6" />}
               />
               <StatsCard
-                title="Avg. Duration"
-                value={recentStats.avgDuration}
-                unit="min"
-                icon={<ClockIcon className="w-6 h-6" />}
+                title="Volume"
+                value={`${(analytics.monthlyVolume / 1000).toFixed(1)}`}
+                unit="k kg"
+                icon={<ScaleIcon className="w-6 h-6" />}
               />
               <StatsCard
-                title="Avg. Calories"
-                value={recentStats.avgCalories}
-                unit="kcal"
-                icon={<FireIcon className="w-6 h-6" />}
+                title="New PRs"
+                value={analytics.monthlyPrs}
+                icon={<TrophyIcon className="w-6 h-6" />}
               />
             </div>
-          </motion.section>
-
-          <motion.section variants={itemVariant}>
-            <h2 className="text-xl font-semibold text-brand-text mb-4">
-              Body Composition
-            </h2>
-            <Card className="!p-2 sm:!p-4 md:!p-6">
-              <ProgressChart
-                data={chartData}
-                xAxisDataKey="date"
-                title="Weight & BMI Trend"
-                height={350}
-                goal={
-                  user?.goals?.weightKg
-                    ? {
-                        value: user.goals.weightKg,
-                        label: `Goal`,
-                        yAxisId: "left",
-                      }
-                    : undefined
-                }
-                dataKeys={[
-                  {
-                    key: "Weight",
-                    name: "Weight (kg)",
-                    color: "var(--color-primary)",
-                    yAxisId: "left",
-                    type: "area",
-                  },
-                  {
-                    key: "BMI",
-                    name: "BMI",
-                    color: "rgb(var(--color-secondary-rgb))",
-                    yAxisId: "right",
-                  },
-                ]}
-              />
-            </Card>
           </motion.section>
 
           <motion.section variants={itemVariant}>
@@ -262,25 +141,22 @@ const AnalyticsPage: React.FC = () => {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <StatsCard
-                title="Total Workouts"
-                value={allTimeStats.allTimeWorkouts}
-                icon={<TrophyIcon className="w-6 h-6" />}
-              />
-              <StatsCard
-                title="Current Weight"
-                value={allTimeStats.latestWeight}
-                unit="kg"
+                title="Total Volume"
+                value={`${(analytics.allTimeVolume / 1000).toFixed(1)}`}
+                unit="k kg"
                 icon={<ScaleIcon className="w-6 h-6" />}
               />
               <StatsCard
-                title="Weight Trend"
-                value={`${bodyTrends.weightChange >= 0 ? "+" : ""}${
-                  bodyTrends.weightChange
-                }`}
-                unit="kg"
-                icon={<ArrowTrendingUpIcon className="w-6 h-6" />}
-                trend={bodyTrends.weightChange > 0 ? "up" : "down"}
-                trendDescription="since beginning"
+                title="Total PRs"
+                value={analytics.allTimePrs}
+                icon={<TrophyIcon className="w-6 h-6" />}
+              />
+              <StatsCard
+                title="Top Set (e1RM)"
+                value={`${
+                  analytics.topSet.exerciseName
+                } @ ${analytics.topSet.estimated1RM.value.toFixed(1)}kg`}
+                icon={<StarIcon className="w-6 h-6" />}
               />
             </div>
           </motion.section>

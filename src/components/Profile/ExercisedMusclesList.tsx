@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWorkout } from "../../contexts/WorkoutContext";
 import { FireIcon } from "@heroicons/react/24/solid";
+import { UIGroup } from "./AnatomicalGraph";
+import { Workout, Exercise } from "../../types";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -19,8 +21,32 @@ const itemVariants = {
   exit: { opacity: 0, scale: 0.95 },
 };
 
+// Helper to get recently exercised muscles from the new context
+const getRecentlyExercisedGroups = (workouts: Workout[]): Set<UIGroup> => {
+  const recentGroups = new Set<UIGroup>();
+  const now = Date.now();
+  const twentyFourHours = 24 * 60 * 60 * 1000;
+
+  workouts.forEach((workout) => {
+    if (now - new Date(workout.date).getTime() < twentyFourHours) {
+      workout.exercises.forEach((exercise: Exercise) => {
+        exercise.muscleGroups.forEach((group) => {
+          recentGroups.add(group as UIGroup);
+        });
+      });
+    }
+  });
+
+  return recentGroups;
+};
+
 const ExercisedMusclesList: React.FC = () => {
-  const { exercisedMuscleGroups } = useWorkout();
+  const { workouts } = useWorkout();
+
+  const exercisedMuscleGroups = useMemo(
+    () => Array.from(getRecentlyExercisedGroups(workouts)),
+    [workouts]
+  );
 
   return (
     <div className="p-4 rounded-lg h-full">
@@ -36,7 +62,7 @@ const ExercisedMusclesList: React.FC = () => {
             exit="hidden"
             className="space-y-2"
           >
-            {exercisedMuscleGroups.map((group) => (
+            {exercisedMuscleGroups.map((group: UIGroup) => (
               <motion.li
                 key={group}
                 variants={itemVariants}

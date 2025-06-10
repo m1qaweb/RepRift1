@@ -11,7 +11,7 @@ import {
   ArrowLeftIcon,
   CalendarDaysIcon,
   PencilSquareIcon,
-  ClockIcon,
+  ScaleIcon,
   ArrowPathIcon,
   HashtagIcon,
 } from "@heroicons/react/24/outline";
@@ -246,10 +246,10 @@ const ProgramDetailPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex items-center">
-                      <ClockIcon className="h-4 w-4 mr-2 text-brand-text-muted" />
-                      <span className="text-brand-text-muted">Rest:</span>
+                      <ScaleIcon className="h-4 w-4 mr-2 text-brand-text-muted" />
+                      <span className="text-brand-text-muted">Weight:</span>
                       <span className="ml-2 font-semibold text-brand-text">
-                        {exercise.restInterval}s
+                        {exercise.weight} kg
                       </span>
                     </div>
                   </div>
