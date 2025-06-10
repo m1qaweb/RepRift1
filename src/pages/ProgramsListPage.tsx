@@ -1,12 +1,14 @@
-// /src/pages/ProgramsListPage.tsx (UPGRADED FOR SUPABASE)
+// /src/pages/ProgramsListPage.tsx (UPGRADED FOR REACT QUERY)
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../contexts/AuthContext";
-// === CHANGE 1: Import from our new service layer ===
-import { Program } from "../types/data"; // The 'Program' type definition is still useful
-import { getPrograms, deleteProgram } from "../services/programService"; // Import our new functions
-// === END CHANGE ===
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Program } from "../types/data";
+import {
+  getPrograms,
+  deleteProgram,
+  saveProgram,
+} from "../services/programService";
 import ProgramCard from "../components/Programs/ProgramCard";
 import Button from "../components/UI/Button";
 import ProgramEditorForm from "../components/Programs/ProgramEditorForm";
@@ -19,42 +21,44 @@ import {
 import Spinner from "../components/UI/Spinner";
 
 const ProgramsListPage: React.FC = () => {
-  const { user } = useAuth();
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
 
-  // State for Delete Confirmation (No changes needed here)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [programToDelete, setProgramToDelete] = useState<{
     id: string;
     title: string;
   } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const loadPrograms = useCallback(() => {
-    // This guard is still important! Don't fetch if the user isn't logged in.
-    if (!user) return;
+  const {
+    data: programs = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery<Program[], Error>({
+    queryKey: ["programs"],
+    queryFn: getPrograms,
+  });
 
-    setIsLoading(true);
-    // === CHANGE 2: Call the new service function ===
-    // Note that we no longer need to pass `user.id`. Our RLS policy on the
-    // database handles this securely on the backend!
-    getPrograms()
-      // === END CHANGE ===
-      .then(setPrograms)
-      .catch((err) => {
-        console.error("Failed to load programs:", err);
-        // Optionally set an error state here to show a message to the user
-      })
-      .finally(() => setIsLoading(false));
-  }, [user]);
+  const deleteProgramMutation = useMutation({
+    mutationFn: deleteProgram,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["programs"] });
+      handleCloseDeleteModal();
+    },
+  });
 
-  useEffect(() => {
-    loadPrograms();
-  }, [loadPrograms]);
+  const saveProgramMutation = useMutation({
+    mutationFn: (
+      programData: Omit<Program, "id" | "createdBy"> & { id?: string }
+    ) => saveProgram(programData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["programs"] });
+      handleCloseEditorModal();
+    },
+  });
 
   const handleOpenModalForNew = () => {
     setEditingProgram(null);
@@ -74,49 +78,25 @@ const ProgramsListPage: React.FC = () => {
     setEditingProgram(null);
   };
 
-  const handleSaveProgram = (savedProgram: Program) => {
-    if (editingProgram) {
-      setPrograms((prev) =>
-        prev.map((p) => (p.id === savedProgram.id ? savedProgram : p))
-      );
-    } else {
-      setPrograms((prev) => [savedProgram, ...prev]);
-    }
-    handleCloseEditorModal();
+  const handleSaveProgram = (
+    programData: Omit<Program, "id" | "createdBy"> & { id?: string }
+  ) => {
+    saveProgramMutation.mutate(programData);
   };
 
   const handleOpenDeleteModal = (programId: string, programTitle: string) => {
     setProgramToDelete({ id: programId, title: programTitle });
-    setDeleteError(null);
     setIsDeleteModalOpen(true);
   };
 
   const handleCloseDeleteModal = () => {
     setIsDeleteModalOpen(false);
     setProgramToDelete(null);
-    setDeleteError(null);
   };
 
-  const handleConfirmDeleteProgram = async () => {
+  const handleConfirmDeleteProgram = () => {
     if (!programToDelete) return;
-
-    setIsDeleting(true);
-    setDeleteError(null);
-    try {
-      // === CHANGE 3: Call the new delete function from our service ===
-      await deleteProgram(programToDelete.id);
-      // === END CHANGE ===
-
-      setPrograms((prev) => prev.filter((p) => p.id !== programToDelete.id));
-      handleCloseDeleteModal();
-    } catch (error) {
-      console.error("Failed to delete program:", error);
-      setDeleteError(
-        error instanceof Error ? error.message : "Could not delete program."
-      );
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteProgramMutation.mutate(programToDelete.id);
   };
 
   const programsGridVariants = {
@@ -136,10 +116,20 @@ const ProgramsListPage: React.FC = () => {
     },
   };
 
-  if (isLoading && programs.length === 0) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] py-10 text-brand-text">
         <Spinner size="lg" className="mb-3" /> <p>Loading your programs...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] py-10 text-brand-text">
+        <ExclamationTriangleIcon className="h-16 w-16 text-red-400 mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Error Loading Programs</h2>
+        <p className="text-brand-text-muted">{error.message}</p>
       </div>
     );
   }
@@ -229,6 +219,7 @@ const ProgramsListPage: React.FC = () => {
             program={editingProgram}
             onSave={handleSaveProgram}
             onCancel={handleCloseEditorModal}
+            isSaving={saveProgramMutation.isPending}
           />
         </Modal>
       )}
@@ -247,40 +238,34 @@ const ProgramsListPage: React.FC = () => {
               <Button
                 variant="ghost"
                 onClick={handleCloseDeleteModal}
-                disabled={isDeleting}
+                disabled={deleteProgramMutation.isPending}
               >
                 Cancel
               </Button>
               <Button
                 variant="danger"
                 onClick={handleConfirmDeleteProgram}
-                isLoading={isDeleting}
-                disabled={isDeleting}
+                isLoading={deleteProgramMutation.isPending}
+                leftIcon={<ExclamationTriangleIcon className="h-5 w-5" />}
               >
                 Delete Program
               </Button>
             </div>
           }
         >
-          <div className="p-4 flex items-start">
-            <ExclamationTriangleIcon className="h-12 w-12 text-error mr-4 flex-shrink-0" />
-            <div className="pt-1">
-              <p className="text-brand-text">
-                Are you sure you want to delete the program:{" "}
-                <strong className="text-brand-text font-semibold">
-                  "{programToDelete.title}"
-                </strong>
-                ?
+          <div className="p-5">
+            <p className="text-brand-text-muted">
+              Are you sure you want to delete the program "
+              <strong className="text-brand-text">
+                {programToDelete.title}
+              </strong>
+              "? This action cannot be undone.
+            </p>
+            {deleteProgramMutation.isError && (
+              <p className="mt-3 text-sm text-red-500 bg-red-500/10 p-3 rounded-md">
+                <strong>Error:</strong> {deleteProgramMutation.error.message}
               </p>
-              <p className="text-sm text-brand-text-muted mt-2">
-                This action is permanent and cannot be undone.
-              </p>
-              {deleteError && (
-                <p className="text-xs text-error mt-3 bg-error/10 p-2 rounded-md">
-                  {deleteError}
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </Modal>
       )}

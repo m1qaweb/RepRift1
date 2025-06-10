@@ -73,11 +73,11 @@ export interface CompletedExercise {
 export interface WorkoutLog {
   id: string;
   userId: string;
-  programId: string | null; // A workout might not be from a program
-  programTitle: string;
   date: string;
-  durationMinutes: number;
-  caloriesBurned: number;
+  programId: string;
+  programTitle: string;
+  durationMinutes?: number;
+  caloriesBurned?: number;
   notes?: string;
   completedExercises: CompletedExercise[];
 }

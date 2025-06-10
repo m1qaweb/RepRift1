@@ -95,7 +95,7 @@ const ProgramCard: React.FC<ProgramCardProps> = ({
               onDeleteClick(program.id, program.title);
             }}
             className="bg-brand-background/50 hover:bg-brand-background/80 text-brand-text-muted hover:text-error"
-            title="Delete Program"
+            aria-label={`Delete program: ${program.title}`}
           >
             <TrashIcon className="h-5 w-5" />
           </Button>

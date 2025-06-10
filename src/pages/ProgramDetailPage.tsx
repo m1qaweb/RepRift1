@@ -3,8 +3,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Program } from "../types/data";
-import { getProgramById } from "../services/programService";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getProgramById, saveProgram } from "../services/programService";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Button from "../components/UI/Button";
 import Spinner from "../components/UI/Spinner";
 import {
@@ -117,10 +117,23 @@ const ProgramDetailPage: React.FC = () => {
     enabled: !!programId,
   });
 
-  const handleEditSuccess = (updatedProgram: Program) => {
-    queryClient.invalidateQueries({ queryKey: ["program", updatedProgram.id] });
-    queryClient.invalidateQueries({ queryKey: ["programs"] });
-    setIsEditModalOpen(false);
+  const saveProgramMutation = useMutation({
+    mutationFn: (
+      programData: Omit<Program, "id" | "createdBy"> & { id?: string }
+    ) => saveProgram(programData),
+    onSuccess: (updatedProgram) => {
+      queryClient.invalidateQueries({
+        queryKey: ["program", updatedProgram.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["programs"] });
+      setIsEditModalOpen(false);
+    },
+  });
+
+  const handleSaveProgram = (
+    programData: Omit<Program, "id" | "createdBy"> & { id?: string }
+  ) => {
+    saveProgramMutation.mutate(programData);
   };
 
   if (isLoading) {
@@ -273,16 +286,14 @@ const ProgramDetailPage: React.FC = () => {
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          title="Edit Workout Program"
+          title="Edit Program"
           size="4xl"
-          hideDefaultFooter
-          panelClassName="dark:bg-brand-card/80 bg-brand-card-light/95 backdrop-blur-xl"
-          preventCloseOnBackdropClick={true}
         >
           <ProgramEditorForm
             program={program}
-            onSave={handleEditSuccess}
+            onSave={handleSaveProgram}
             onCancel={() => setIsEditModalOpen(false)}
+            isSaving={saveProgramMutation.isPending}
           />
         </Modal>
       )}

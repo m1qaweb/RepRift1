@@ -2,12 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  useForm,
-  SubmitHandler,
-  useFieldArray,
-  FieldErrors,
-} from "react-hook-form";
+import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
 
 // === THE ONLY CHANGE IS HERE ===
 import {
@@ -15,7 +10,6 @@ import {
   Exercise as ProgramExerciseData,
   MasterExercise,
 } from "../../types/data"; // Keep using types
-import { saveProgram } from "../../services/programService"; // Import saveProgram from our new service
 // === END CHANGE ===
 
 import Button from "../UI/Button";
@@ -26,12 +20,14 @@ import {
   RectangleStackIcon,
 } from "@heroicons/react/24/outline";
 import { validateRequired } from "../../utils/validators";
-import Spinner from "../UI/Spinner";
 
 interface ProgramEditorFormProps {
   program?: Program | null;
-  onSave: (savedProgram: Program) => void;
+  onSave: (
+    programData: Omit<Program, "id" | "createdBy"> & { id?: string }
+  ) => void;
   onCancel: () => void;
+  isSaving?: boolean;
 }
 
 export type ProgramExerciseFormFields = {
@@ -69,6 +65,7 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
   program,
   onSave,
   onCancel,
+  isSaving,
 }) => {
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
 
@@ -77,7 +74,7 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
     control,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting, isValid, isDirty },
+    formState: { errors, isValid, isDirty },
     watch,
   } = useForm<ProgramFormInputs>({
     defaultValues: { title: "", description: "", exercises: [] },
@@ -113,7 +110,7 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
     }
   }, [program, reset]);
 
-  const onSubmitHandler: SubmitHandler<ProgramFormInputs> = async (data) => {
+  const onSubmitHandler: SubmitHandler<ProgramFormInputs> = (data) => {
     const exercisesToSave: ProgramExerciseData[] = data.exercises.map((ex) => ({
       id: ex.masterExerciseId,
       name: ex.name,
@@ -121,18 +118,13 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
       reps: ex.reps,
       weight: Number(ex.weight),
     }));
-    const programDataToSave = {
+
+    onSave({
       id: program?.id,
       title: data.title,
       description: data.description,
       exercises: exercisesToSave,
-    };
-    try {
-      const saved = await saveProgram(programDataToSave);
-      onSave(saved);
-    } catch (error) {
-      console.error("Failed to save program", error);
-    }
+    });
   };
 
   const handleExercisesSelectedFromModal = (
@@ -282,21 +274,18 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
                 type="button"
                 variant="ghost"
                 onClick={onCancel}
-                disabled={isSubmitting}
+                disabled={isSaving}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 variant="primary"
-                isLoading={isSubmitting}
-                disabled={isSubmitting || !isValid || !isDirty}
+                isLoading={isSaving}
+                disabled={isSaving || !isValid || !isDirty}
+                className="min-w-[120px]"
               >
-                {isSubmitting
-                  ? "Saving..."
-                  : program
-                  ? "Save Changes"
-                  : "Create Program"}
+                {isSaving ? "Saving..." : "Save Program"}
               </Button>
             </div>
           </div>

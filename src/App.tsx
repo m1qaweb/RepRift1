@@ -1,12 +1,6 @@
 // /src/App.tsx - Root component with router and context providers.
 import React, { Suspense, lazy } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnimatePresence, motion } from "framer-motion";
@@ -14,7 +8,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WorkoutProvider } from "./contexts/WorkoutContext";
 
 import Navbar from "./components/Layout/Navbar";
-
 import Footer from "./components/Layout/Footer";
 
 const queryClient = new QueryClient({
@@ -241,15 +234,13 @@ interface ProtectedRouteProps {
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <ThemeProvider>
-          <AuthProvider>
-            <WorkoutProvider>
-              <AppContent />
-            </WorkoutProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </Router>
+      <ThemeProvider>
+        <AuthProvider>
+          <WorkoutProvider>
+            <AppContent />
+          </WorkoutProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };

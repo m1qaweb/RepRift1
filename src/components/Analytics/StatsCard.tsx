@@ -1,6 +1,6 @@
 // /src/components/Analytics/StatsCard.tsx (Slightly Upgraded)
 
-import React from "react";
+import React, { ReactElement } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpIcon, ArrowDownIcon } from "@heroicons/react/24/solid";
 import Card from "../UI/Card";
@@ -8,12 +8,9 @@ import Card from "../UI/Card";
 interface StatsCardProps {
   title: string;
   value: string | number;
-  icon?: React.ReactNode;
+  icon: ReactElement;
   unit?: string;
-  trend?: "up" | "down" | "neutral";
-  trendValue?: string | number; // Now accepts number too
-  trendDescription?: string; // <<< NEW PROP
-  onVisibleAnimate?: boolean;
+  comparisonValue?: number;
   className?: string;
 }
 
@@ -22,66 +19,60 @@ const StatsCard: React.FC<StatsCardProps> = ({
   value,
   icon,
   unit,
-  trend,
-  trendValue,
-  trendDescription,
-  onVisibleAnimate = true,
+  comparisonValue,
   className,
 }) => {
-  const trendColorClasses = {
-    up: "text-success",
-    down: "text-error",
-    neutral: "text-brand-text-muted",
+  const ComparisonIndicator = () => {
+    if (comparisonValue === undefined || comparisonValue === null) return null;
+
+    const isPositive = comparisonValue >= 0;
+    const isZero = comparisonValue === 0;
+
+    if (isZero) {
+      return (
+        <span className="text-xs font-medium text-brand-text-muted">
+          No change
+        </span>
+      );
+    }
+
+    return (
+      <div
+        className={`flex items-center text-xs font-medium ${
+          isPositive ? "text-success" : "text-error"
+        }`}
+      >
+        {isPositive ? (
+          <ArrowUpIcon className="h-3 w-3 mr-1" />
+        ) : (
+          <ArrowDownIcon className="h-3 w-3 mr-1" />
+        )}
+        <span>{Math.abs(comparisonValue)}%</span>
+      </div>
+    );
   };
 
   return (
     <motion.div
-    // ... motion props no changes ...
+      className="rounded-lg bg-brand-card/30 p-4 border border-brand-border/10 backdrop-blur-sm flex flex-col justify-between"
+      whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
+      transition={{ type: "spring", stiffness: 300 }}
     >
-      <Card
-        className="p-5 flex flex-col items-start justify-between min-h-[130px] shadow-brand"
-        hoverEffect={true}
-      >
-        <div className="flex items-center justify-between w-full mb-1">
-          <h4 className="text-sm font-medium text-brand-text-muted uppercase tracking-wider">
-            {title}
-          </h4>
-          {icon && (
-            <span className="text-brand-primary text-opacity-80">{icon}</span>
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-base font-medium text-brand-text-muted">{title}</h3>
+        <div className="text-brand-primary">{icon}</div>
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-brand-text">
+          {value}
+          {unit && (
+            <span className="text-base ml-1 font-medium text-brand-text-muted">
+              {unit}
+            </span>
           )}
-        </div>
-
-        <div className="mt-1">
-          <p className="text-3xl font-bold text-brand-text">
-            {value}
-            {unit && (
-              <span className="text-base font-medium text-brand-text-muted ml-1.5">
-                {unit}
-              </span>
-            )}
-          </p>
-        </div>
-
-        {trend && trendValue && (
-          <div
-            className={`mt-2 text-xs flex items-center font-medium ${
-              trendColorClasses[trend] || "text-brand-text-muted"
-            }`}
-          >
-            {trend === "up" && <ArrowUpIcon className="h-3.5 w-3.5 mr-0.5" />}
-            {trend === "down" && (
-              <ArrowDownIcon className="h-3.5 w-3.5 mr-0.5" />
-            )}
-            <span>{trendValue}</span>
-            {/* <<< RENDER NEW PROP HERE */}
-            {trendDescription && (
-              <span className="ml-1 text-brand-text-muted/80">
-                {trendDescription}
-              </span>
-            )}
-          </div>
-        )}
-      </Card>
+        </p>
+        <ComparisonIndicator />
+      </div>
     </motion.div>
   );
 };

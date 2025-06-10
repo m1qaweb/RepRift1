@@ -12,9 +12,48 @@ import {
   PersonalRecord,
   WorkoutContextType,
   WorkoutState,
+  Set as WorkoutSet,
+  Exercise,
 } from "../types"; // <-- Updated import
 
 const WORKOUT_DATA_KEY = "workoutHistory";
+
+// A robust function to sanitize the entire workouts array
+const sanitizeWorkouts = (workouts: Workout[]): Workout[] => {
+  return (workouts || []).map((workout) => {
+    const sanitizedExercises = (workout.exercises || []).map((exercise) => {
+      const sanitizedSets = (exercise.sets || []).map((set) => ({
+        ...set,
+        weight: set.weight ?? 0,
+        reps: set.reps ?? 0,
+        completed: set.completed ?? false,
+      }));
+
+      return {
+        ...exercise,
+        sets: sanitizedSets,
+      };
+    });
+
+    const calculatedVolume = sanitizedExercises.reduce((total, exercise) => {
+      return (
+        total +
+        exercise.sets.reduce((exTotal, set) => {
+          return (
+            exTotal + (set.completed ? (set.weight ?? 0) * (set.reps ?? 0) : 0)
+          );
+        }, 0)
+      );
+    }, 0);
+
+    return {
+      ...workout,
+      volume: !isNaN(calculatedVolume) ? calculatedVolume : 0,
+      duration: workout.duration ?? 0,
+      exercises: sanitizedExercises,
+    };
+  });
+};
 
 // Epley formula for estimating 1 Rep Max
 const calculateEpley1RM = (weight: number, reps: number): number => {
@@ -52,7 +91,14 @@ export const WorkoutProvider: React.FC<WorkoutProviderProps> = ({
       const storedData = localStorage.getItem(WORKOUT_DATA_KEY);
       if (storedData) {
         const parsedData: WorkoutState = JSON.parse(storedData);
-        setState({ ...parsedData, loading: false });
+        // Sanitize data on load
+        const sanitized = sanitizeWorkouts(parsedData.workouts || []);
+        const newPrs = calculateAllStats(sanitized);
+        setState({
+          workouts: sanitized,
+          personalRecords: newPrs,
+          loading: false,
+        });
       } else {
         setState((s) => ({ ...s, loading: false }));
       }
@@ -132,18 +178,10 @@ export const WorkoutProvider: React.FC<WorkoutProviderProps> = ({
 
   const addWorkout = useCallback(
     (newWorkout: Workout) => {
-      // Recalculate total volume for the workout
-      const totalVolume = newWorkout.exercises.reduce((total, exercise) => {
-        return (
-          total +
-          exercise.sets.reduce((exTotal, set) => {
-            return exTotal + (set.completed ? set.weight * set.reps : 0);
-          }, 0)
-        );
-      }, 0);
-      newWorkout.volume = totalVolume;
+      // Sanitize the new workout before doing anything else
+      const [sanitizedWorkout] = sanitizeWorkouts([newWorkout]);
 
-      const updatedWorkouts = [...state.workouts, newWorkout];
+      const updatedWorkouts = [...state.workouts, sanitizedWorkout];
       const newPrs = calculateAllStats(updatedWorkouts);
 
       setState({
@@ -157,8 +195,11 @@ export const WorkoutProvider: React.FC<WorkoutProviderProps> = ({
 
   const updateWorkout = useCallback(
     (updatedWorkout: Workout) => {
+      // Sanitize the updated workout
+      const [sanitizedWorkout] = sanitizeWorkouts([updatedWorkout]);
+
       const updatedWorkouts = state.workouts.map((w) =>
-        w.id === updatedWorkout.id ? updatedWorkout : w
+        w.id === sanitizedWorkout.id ? sanitizedWorkout : w
       );
       const newPrs = calculateAllStats(updatedWorkouts);
       setState({

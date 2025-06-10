@@ -24,7 +24,7 @@ export interface AppUser {
 }
 
 // Defines the functions and state that will be available to any component using our context.
-interface AuthContextType {
+export interface AuthContextType {
   user: AppUser | null;
   loading: boolean;
   login: (credentials: { email: string; pass: string }) => Promise<void>;
@@ -38,7 +38,9 @@ interface AuthContextType {
   changePassword: (newPassword: string) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined
+);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
