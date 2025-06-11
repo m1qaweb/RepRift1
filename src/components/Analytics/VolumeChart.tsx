@@ -1,91 +1,117 @@
 import React from "react";
+import { motion } from "framer-motion";
 import ReactApexChart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import { useTheme } from "../../contexts/ThemeContext";
-import { getBaseChartOptions, getChartColors } from "../../config/chartThemes";
+import { getChartColors } from "../../config/chartThemes";
+import { useChartReady } from "../../hooks/useChartReady";
 
 interface VolumeChartProps {
-  series: {
-    name: string;
-    data: { x: string; y: number }[];
-  }[];
-  height?: number;
+  data: { x: string; y: number }[];
+  dateRange: string;
 }
 
-const VolumeChart: React.FC<VolumeChartProps> = ({ series, height = 350 }) => {
+const VolumeChart: React.FC<VolumeChartProps> = ({ data, dateRange }) => {
+  const [containerRef, isReady] = useChartReady<HTMLDivElement>();
   const { theme } = useTheme();
-  const currentTheme = theme || "dark";
-  const baseOptions = getBaseChartOptions(currentTheme);
-  const chartColors = getChartColors(currentTheme);
+  
+  const chartColors = getChartColors(theme || "dark");
 
   const options: ApexOptions = {
-    ...baseOptions,
     chart: {
-      ...baseOptions.chart,
       type: "area",
-      height: height,
-      zoom: {
-        enabled: false,
+      height: 250,
+      background: "transparent",
+      toolbar: { show: false },
+      zoom: { enabled: false },
+      animations: {
+        enabled: true,
+        easing: 'easeinout',
+        speed: 800,
+        animateGradually: { enabled: true, delay: 150 },
+        dynamicAnimation: { enabled: true, speed: 350 },
+      },
+      dropShadow: {
+        enabled: true,
+        top: 3,
+        left: 0,
+        blur: 4,
+        color: chartColors[0],
+        opacity: 0.3,
       },
     },
+    dataLabels: { enabled: false },
+    stroke: { curve: "smooth", width: 4 },
     colors: [chartColors[0]],
     fill: {
       type: "gradient",
       gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.4,
-        opacityTo: 0.1,
+        shade: theme,
+        type: "vertical",
+        shadeIntensity: 0.5,
+        opacityFrom: 0.6,
+        opacityTo: 0,
         stops: [0, 90, 100],
       },
     },
-    stroke: {
-      ...baseOptions.stroke,
-      width: 3,
+    grid: {
+      borderColor: chartColors[5],
+      strokeDashArray: 4,
+      yaxis: { lines: { show: true } },
+      xaxis: { lines: { show: false } },
     },
-    markers: {
-      size: 4,
-      strokeWidth: 2,
-      hover: {
-        size: 6,
-      },
-    },
-    xaxis: {
-      ...baseOptions.xaxis,
-      type: "datetime",
-    },
-    yaxis: {
-      ...baseOptions.yaxis,
-      title: {
-        text: "Volume (kg)",
-        style: {
-          ...(baseOptions.yaxis as any)?.title?.style,
+    tooltip: {
+      theme: theme,
+      x: { format: "dd MMM, yyyy" },
+      y: {
+        formatter: (val) => `${val.toLocaleString()} kg`,
+        title: {
+          formatter: () => `Volume`,
         },
       },
     },
-    tooltip: {
-      ...baseOptions.tooltip,
-      x: {
-        format: "dd MMM yyyy",
+    xaxis: {
+      type: "datetime",
+      labels: { style: { colors: chartColors[6], fontFamily: 'inherit' } },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: {
+        style: { colors: chartColors[6], fontFamily: 'inherit' },
+        formatter: (val) => `${Math.round(val / 1000)}k`,
       },
-      y: {
-        formatter: (val) => `${val.toLocaleString()} kg`,
+      min: 0,
+    },
+    states: {
+      hover: {
+        filter: { type: 'lighten', value: 0.05 },
       },
     },
   };
 
+  const series = [{ name: "Volume", data }];
+
   return (
-    <div className="rounded-2xl bg-brand-card/30 p-4 border border-brand-border/10 backdrop-blur-sm">
-      <h3 className="text-xl font-semibold text-brand-text mb-2">
-        Workout Volume
-      </h3>
-      <ReactApexChart
-        options={options}
-        series={series}
-        type="area"
-        height={height}
-      />
-    </div>
+    <motion.div
+      ref={containerRef}
+      className="h-full w-full p-2"
+      initial={{ opacity: 0, y: 20 }}
+      animate={isReady ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
+    >
+      {isReady ? (
+        <ReactApexChart
+          options={options}
+          series={series}
+          type="area"
+          height={250}
+        />
+      ) : (
+        <div className="flex justify-center items-center h-full text-brand-text-muted">Loading chart...</div>
+      )}
+    </motion.div>
   );
 };
 
-export default VolumeChart;
+export default React.memo(VolumeChart);

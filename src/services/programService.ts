@@ -3,7 +3,7 @@
 import { supabase } from "../supabaseClient";
 // We re-use the TypeScript interfaces from your API.ts file. This is great practice.
 // No need to define what a "Program" is twice!
-import { Program } from "../types/data";
+import { Program, ProgramTemplate } from "../types/data";
 
 /**
  * --- READ ---
@@ -105,6 +105,7 @@ export const saveProgram = async (
 
   return finalProgram;
 };
+
 export const getProgramById = async (
   programId: string
 ): Promise<Program | null> => {
@@ -131,6 +132,7 @@ export const getProgramById = async (
     createdBy: data.created_by,
   } as Program;
 };
+
 /**
  * --- DELETE ---
  * Deletes a program by its unique ID.
@@ -149,4 +151,69 @@ export const deleteProgram = async (programId: string): Promise<void> => {
   }
 
   // No need to return anything on success.
+};
+
+// =========================
+// === PROGRAM TEMPLATES ===
+// =========================
+
+/**
+ * Fetch all program templates. These are read-only.
+ */
+export const getProgramTemplates = async (): Promise<ProgramTemplate[]> => {
+  const { data, error } = await supabase
+    .from("program_templates")
+    .select("*")
+    .order("title", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching program templates:", error.message);
+    throw error;
+  }
+
+  return (data ?? []) as ProgramTemplate[];
+};
+
+/**
+ * Import (duplicate) a template into the user's own programs list.
+ * @param templateId UUID of the template to copy.
+ */
+export const importProgramFromTemplate = async (
+  templateId: string
+): Promise<void> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in to import a template.");
+  }
+
+  // Fetch the template row
+  const { data: template, error: fetchError } = await supabase
+    .from("program_templates")
+    .select("*")
+    .eq("id", templateId)
+    .single();
+
+  if (fetchError) {
+    console.error("Error fetching template:", fetchError.message);
+    throw fetchError;
+  }
+  if (!template) {
+    throw new Error("Template not found.");
+  }
+
+  // Insert a new program for this user based on the template
+  const { error: insertError } = await supabase.from("programs").insert({
+    title: template.title,
+    description: template.description,
+    exercises: template.exercises,
+    created_by: user.id,
+  });
+
+  if (insertError) {
+    console.error("Error importing template:", insertError.message);
+    throw insertError;
+  }
 };

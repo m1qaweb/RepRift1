@@ -1,29 +1,111 @@
 // /src/pages/AnalyticsPage.tsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, lazy } from "react";
 import { motion } from "framer-motion";
 import { useWorkout } from "../contexts/WorkoutContext";
 import StatsCard from "../components/Analytics/StatsCard";
-import Spinner from "../components/UI/Spinner";
 import {
   ChartBarIcon,
-  BoltIcon,
-  TrophyIcon,
-  ScaleIcon,
-  StarIcon,
 } from "@heroicons/react/24/outline";
-import { subDays, parseISO, isAfter, format, isValid } from "date-fns";
-import VolumeChart from "../components/Analytics/VolumeChart";
-import { Workout } from "../types";
-import ExerciseProgressChart from "../components/Analytics/ExerciseProgressChart";
-import MuscleGroupDistributionChart from "../components/Analytics/MuscleGroupDistributionChart";
+import { subDays, parseISO, isAfter, format, isValid, startOfDay } from "date-fns";
+import type { Workout, Exercise, Set } from "../types";
 import { getMuscleGroup } from "../utils/muscleGroupMapping";
 import Skeleton from "../components/UI/Skeleton";
-import ConsistencyCalendar from "../components/Analytics/ConsistencyCalendar";
+import GlassCard from "../components/UI/GlassCard";
+
+const VolumeChart = React.lazy(
+  () => import("../components/Analytics/VolumeChart")
+);
+const ExerciseProgressChart = React.lazy(
+  () => import("../components/Analytics/ExerciseProgressChart")
+);
+const MuscleGroupDistributionChart = React.lazy(
+  () => import("../components/Analytics/MuscleGroupDistributionChart")
+);
+
+type DateRange = "7" | "30" | "90" | "all";
+
+const DateRangeSelector: React.FC<{
+  selectedRange: DateRange;
+  onSelectRange: (range: DateRange) => void;
+}> = ({ selectedRange, onSelectRange }) => {
+  const ranges: { value: DateRange; label: string }[] = [
+    { value: "7", label: "7D" },
+    { value: "30", label: "30D" },
+    { value: "90", label: "90D" },
+    { value: "all", label: "All Time" },
+  ];
+
+  return (
+    <div className="flex items-center space-x-2 rounded-lg bg-brand-surface p-1 shadow-inner">
+      {ranges.map((range) => (
+        <button
+          key={range.value}
+          onClick={() => onSelectRange(range.value)}
+          className={`relative px-4 py-1.5 text-sm font-semibold transition focus:outline-none ${
+            selectedRange === range.value
+              ? "text-brand-text-light"
+              : "text-brand-text-muted hover:text-brand-text"
+          }`}
+        >
+          {selectedRange === range.value && (
+            <motion.div
+              layoutId="date-range-bg"
+              className="absolute inset-0 z-0 rounded-md bg-brand-primary/20"
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            />
+          )}
+          <span className="relative z-10">{range.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const calculateEpley1RM = (weight: number, reps: number): number => {
   if (reps === 1) return weight;
   if (reps === 0) return 0;
   return weight * (1 + reps / 30);
+};
+
+const generateSparklineData = (
+    data: (Workout | { date: string })[], 
+    key: 'volume' | 'count', 
+    days: number
+) => {
+    const intervals = 15;
+    if (days === -1) { // -1 for "All Time"
+        const sorted = data.sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime());
+        const chunks = Array.from({ length: intervals }, (_, i) => {
+            const start = Math.floor(i * sorted.length / intervals);
+            const end = Math.floor((i + 1) * sorted.length / intervals);
+            return sorted.slice(start, end);
+        });
+        if (key === 'volume') {
+            return chunks.map(chunk => chunk.reduce((sum, item) => sum + ('volume' in item ? item.volume || 0 : 0), 0));
+        }
+        return chunks.map(chunk => chunk.length);
+    }
+
+    const intervalDays = Math.max(Math.floor(days / intervals), 1);
+    const now = startOfDay(new Date());
+    const sparkline: number[] = [];
+  
+    for (let i = intervals - 1; i >= 0; i--) {
+      const end = subDays(now, i * intervalDays);
+      const start = subDays(end, intervalDays);
+      
+      const intervalData = data.filter(d => {
+        const date = parseISO(d.date!);
+        return isValid(date) && isAfter(date, start) && !isAfter(date, end);
+      });
+  
+      if (key === 'volume') {
+        sparkline.push(intervalData.reduce((sum, item) => sum + ('volume' in item ? item.volume || 0 : 0), 0));
+      } else {
+        sparkline.push(intervalData.length);
+      }
+    }
+    return sparkline;
 };
 
 const processVolumeDataForChart = (workouts: Workout[]) => {
@@ -62,7 +144,9 @@ const processExerciseDataForChart = (
   const exerciseSessions = workouts
     .map((w) => ({
       date: w.date,
-      exercise: w.exercises.find((e) => e.name === exerciseName),
+      exercise: w.exercises.find(
+        (e: Exercise) => e.name === exerciseName
+      ),
     }))
     .filter(
       (
@@ -71,7 +155,6 @@ const processExerciseDataForChart = (
         date: string;
         exercise: NonNullable<typeof session.exercise>;
       } =>
-        // 3. Filter out sessions with invalid dates or missing exercises
         !!session.exercise && !!session.date && isValid(parseISO(session.date))
     )
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -79,15 +162,15 @@ const processExerciseDataForChart = (
   const categories = exerciseSessions.map((s) =>
     format(parseISO(s.date), "dd MMM")
   );
-  const e1RMData: number[] = [];
-  const topWeightData: number[] = [];
-  const topRepsData: number[] = [];
+  const e1RMData: { x: string; y: number }[] = [];
+  const topWeightData: { x: string; y: number }[] = [];
+  const topRepsData: { x: string; y: number }[] = [];
 
   exerciseSessions.forEach((session) => {
     const topSet = (session.exercise.sets || [])
-      .filter((s) => s && s.completed)
+      .filter((s: Set) => s && s.completed)
       .reduce(
-        (maxSet, currentSet) => {
+        (maxSet: Set, currentSet: Set) => {
           const currentWeight = Number(currentSet.weight) || 0;
           const currentReps = Number(currentSet.reps) || 0;
           const maxWeight = Number(maxSet.weight) || 0;
@@ -105,11 +188,11 @@ const processExerciseDataForChart = (
       );
 
     const e1RMValue = calculateEpley1RM(topSet.weight, topSet.reps);
+    const date = format(parseISO(session.date), "yyyy-MM-dd");
 
-    // 4. Final paranoid check on every value
-    e1RMData.push(Number(e1RMValue) || 0);
-    topWeightData.push(Number(topSet.weight) || 0);
-    topRepsData.push(Number(topSet.reps) || 0);
+    e1RMData.push({ x: date, y: Number(e1RMValue) || 0 });
+    topWeightData.push({ x: date, y: Number(topSet.weight) || 0 });
+    topRepsData.push({ x: date, y: Number(topSet.reps) || 0 });
   });
 
   return {
@@ -126,23 +209,17 @@ const processMuscleGroupData = (workouts: Workout[]) => {
   const distribution: { [key: string]: number } = {};
 
   (workouts || []).forEach((workout) => {
-    (workout.exercises || []).forEach((exercise) => {
+    (workout.exercises || []).forEach((exercise: Exercise) => {
       const muscleGroup = getMuscleGroup(exercise.name);
-      const exerciseVolume = (exercise.sets || []).reduce((sum, set) => {
-        if (!set || !set.completed) return sum;
-        // 5. Ensure every part of the volume calculation is a valid number
-        const setVolume = (Number(set.weight) || 0) * (Number(set.reps) || 0);
-        return sum + setVolume;
-      }, 0);
-      distribution[muscleGroup] =
-        (distribution[muscleGroup] || 0) + exerciseVolume;
+      // In this chart, we care about the number of sets, not volume.
+      const setCount = (exercise.sets || []).filter(s => s.completed).length;
+      distribution[muscleGroup] = (distribution[muscleGroup] || 0) + setCount;
     });
   });
 
-  const labels = Object.keys(distribution);
-  const series = Object.values(distribution).map((v) => Number(v) || 0);
-
-  return { labels, series };
+  return Object.entries(distribution)
+    .map(([label, value]) => ({ label, value: Number(value) || 0 }))
+    .sort((a, b) => b.value - a.value);
 };
 
 const AnalyticsPageLoader: React.FC = () => {
@@ -181,125 +258,133 @@ const AnalyticsPageLoader: React.FC = () => {
 const AnalyticsPage: React.FC = () => {
   const { workouts, personalRecords, loading } = useWorkout();
   const [selectedExercise, setSelectedExercise] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>("30");
+  const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
+
+  const { dateRangeDays } = useMemo(() => {
+    if (dateRange === "all") return { dateRangeDays: -1 };
+    const rangeDays = parseInt(dateRange, 10);
+    const startDate = subDays(startOfDay(new Date()), rangeDays);
+    const filtered = workouts.filter((w) => {
+      const workoutDate = parseISO(w.date!);
+      return isValid(workoutDate) && isAfter(workoutDate, startDate);
+    });
+    return { dateRangeDays: rangeDays };
+  }, [workouts, dateRange]);
 
   const exerciseOptions = useMemo(() => {
-    const allExercises = (workouts || [])
-      .flatMap((w) => w.exercises?.map((e) => e.name) || [])
-      .filter(Boolean);
-    return Array.from(new Set(allExercises));
+    const allExercises = new Set<string>();
+    workouts.forEach((w) =>
+      w.exercises?.forEach((e) => allExercises.add(e.name))
+    );
+    return Array.from(allExercises).map(e => ({ value: e, label: e }));
   }, [workouts]);
 
   React.useEffect(() => {
-    if (exerciseOptions.length > 0 && !selectedExercise) {
-      setSelectedExercise(exerciseOptions[0]);
+    if (exerciseOptions.length > 0 && !exerciseOptions.find(opt => opt.value === selectedExercise)) {
+      setSelectedExercise(exerciseOptions[0].value);
     }
   }, [exerciseOptions, selectedExercise]);
 
+  React.useEffect(() => {
+    if (dateRange === "all") {
+      setFilteredWorkouts(workouts);
+      return;
+    }
+    const rangeDays = parseInt(dateRange, 10);
+    const startDate = subDays(startOfDay(new Date()), rangeDays);
+    const newWorkouts = workouts.filter((w) => {
+      const workoutDate = parseISO(w.date!);
+      return isValid(workoutDate) && isAfter(workoutDate, startDate);
+    });
+    if (newWorkouts.length === 0) {
+      setFilteredWorkouts(workouts);
+      return;
+    }
+    setFilteredWorkouts(newWorkouts);
+  }, [dateRange, workouts]);
+
   const volumeSeries = useMemo(
-    () => processVolumeDataForChart(workouts),
-    [workouts]
+    () => processVolumeDataForChart(filteredWorkouts),
+    [filteredWorkouts]
   );
 
   const exerciseProgressData = useMemo(
-    () => processExerciseDataForChart(workouts, selectedExercise),
-    [workouts, selectedExercise]
+    () => processExerciseDataForChart(filteredWorkouts, selectedExercise),
+    [filteredWorkouts, selectedExercise]
   );
 
   const muscleGroupData = useMemo(
-    () => processMuscleGroupData(workouts),
-    [workouts]
-  );
-
-  const workoutDates = useMemo(() => workouts.map((w) => w.date), [workouts]);
-
-  const workoutDataForCalendar = useMemo(
-    () => workouts.map((w) => ({ date: w.date, volume: w.volume })),
-    [workouts]
+    () => processMuscleGroupData(filteredWorkouts),
+    [filteredWorkouts]
   );
 
   const analytics = useMemo(() => {
-    // Current period: Last 30 days
-    const last30DaysStart = subDays(new Date(), 30);
-    const workoutsLast30Days = workouts.filter((w) =>
-      isAfter(parseISO(w.date!), last30DaysStart)
-    );
+    // --- Current Period Calculations ---
+    const currentWorkouts = filteredWorkouts;
+    const periodVolume = currentWorkouts.reduce((sum, w) => sum + (w.volume || 0), 0);
+    
+    let prsInPeriod;
+    if (dateRange === "all") {
+        prsInPeriod = personalRecords ? Object.values(personalRecords) : [];
+    } else {
+        const startDate = subDays(startOfDay(new Date()), dateRangeDays);
+        prsInPeriod = personalRecords ? Object.values(personalRecords).filter(pr => {
+            const prDate = parseISO(pr.estimated1RM.date);
+            return isValid(prDate) && isAfter(prDate, startDate);
+        }) : [];
+    }
 
-    // Previous period: 30 days before the last 30 days
-    const prev30DaysStart = subDays(new Date(), 60);
-    const prev30DaysEnd = last30DaysStart;
-    const workoutsPrev30Days = workouts.filter(
-      (w) =>
-        isAfter(parseISO(w.date!), prev30DaysStart) &&
-        !isAfter(parseISO(w.date!), prev30DaysEnd)
-    );
+    // --- Previous Period Calculations ---
+    let prevPeriodWorkouts = 0;
+    let prevPeriodVolume = 0;
+    let prevPeriodPrs = 0;
 
-    // --- Calculations for Current Period ---
-    const monthlyWorkouts = workoutsLast30Days.length;
-    const monthlyVolume = workoutsLast30Days.reduce(
-      (sum, w) => sum + w.volume,
-      0
-    );
-    const allPrs = Object.values(personalRecords);
-    const monthlyPrs = allPrs.filter((pr) =>
-      isAfter(parseISO(pr.estimated1RM.date), last30DaysStart)
-    ).length;
+    if (dateRange !== "all") {
+        const currentStartDate = subDays(startOfDay(new Date()), dateRangeDays);
+        const prevStartDate = subDays(currentStartDate, dateRangeDays);
+        const prevEndDate = currentStartDate;
 
-    // --- Calculations for Previous Period ---
-    const prevMonthlyWorkouts = workoutsPrev30Days.length;
-    const prevMonthlyVolume = workoutsPrev30Days.reduce(
-      (sum, w) => sum + w.volume,
-      0
-    );
-    const prevMonthlyPrs = allPrs.filter(
-      (pr) =>
-        isAfter(parseISO(pr.estimated1RM.date), prev30DaysStart) &&
-        !isAfter(parseISO(pr.estimated1RM.date), prev30DaysEnd)
-    ).length;
+        const prevPeriodWorkoutData = workouts.filter(w => {
+            const date = parseISO(w.date!);
+            return isValid(date) && isAfter(date, prevStartDate) && !isAfter(date, prevEndDate);
+        });
+        prevPeriodWorkouts = prevPeriodWorkoutData.length;
+        prevPeriodVolume = prevPeriodWorkoutData.reduce((sum, w) => sum + (w.volume || 0), 0);
+        
+        prevPeriodPrs = personalRecords ? Object.values(personalRecords).filter(pr => {
+            const prDate = parseISO(pr.estimated1RM.date);
+            return isValid(prDate) && isAfter(prDate, prevStartDate) && !isAfter(prDate, prevEndDate);
+        }).length : 0;
+    }
 
-    // --- Comparison Calculations ---
+    // --- Change Calculations ---
     const calculateChange = (current: number, previous: number) => {
-      if (previous === 0) return current > 0 ? 100 : 0;
-      return ((current - previous) / previous) * 100;
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return ((current - previous) / previous) * 100;
     };
+    
+    const workoutChange = calculateChange(currentWorkouts.length, prevPeriodWorkouts);
+    const volumeChange = calculateChange(periodVolume, prevPeriodVolume);
+    const prsChange = calculateChange(prsInPeriod.length, prevPeriodPrs);
 
-    const workoutsChange = calculateChange(
-      monthlyWorkouts,
-      prevMonthlyWorkouts
-    );
-    const volumeChange = calculateChange(monthlyVolume, prevMonthlyVolume);
-    const prsChange = calculateChange(monthlyPrs, prevMonthlyPrs);
-
-    const totalVolume = workouts.reduce((sum, w) => sum + w.volume, 0);
-
-    const topSet = (Object.values(personalRecords) || []).reduce(
-      (max, pr) => {
-        const value = pr?.estimated1RM?.value;
-        if (value && !isNaN(value) && value > (max.estimated1RM.value || 0)) {
-          return pr;
-        }
-        return max;
-      },
-      {
-        estimated1RM: { value: 0, date: "" },
-        exerciseName: "N/A",
-        highestReps: { value: 0, weight: 0, date: "" },
-        highestSetVolume: { value: 0, date: "" },
-        highestWeight: { value: 0, date: "" },
-      }
-    );
+    const prsAsWorkouts = prsInPeriod.map(p => ({ date: p.estimated1RM.date }));
+    const workoutSparkline = generateSparklineData(currentWorkouts, 'count', dateRangeDays);
+    const volumeSparkline = generateSparklineData(currentWorkouts, 'volume', dateRangeDays);
+    const prSparkline = generateSparklineData(prsAsWorkouts, 'count', dateRangeDays);
 
     return {
-      monthlyWorkouts,
-      monthlyVolume,
-      monthlyPrs,
-      workoutsChange,
+      periodWorkouts: currentWorkouts.length,
+      periodVolume: periodVolume,
+      periodPrs: prsInPeriod.length,
+      workoutChange,
       volumeChange,
       prsChange,
-      allTimeVolume: totalVolume,
-      allTimePrs: allPrs.length,
-      topSet,
+      workoutSparkline,
+      volumeSparkline,
+      prSparkline,
     };
-  }, [workouts, personalRecords]);
+  }, [filteredWorkouts, workouts, personalRecords, dateRange, dateRangeDays]);
 
   if (loading) {
     return <AnalyticsPageLoader />;
@@ -321,18 +406,21 @@ const AnalyticsPage: React.FC = () => {
 
   return (
     <motion.div
-      className="space-y-8"
+      className="p-4 sm:p-6 lg:p-8 bg-brand-background-dark"
       variants={containerVariant}
       initial="hidden"
       animate="visible"
     >
-      <motion.div variants={itemVariant}>
-        <h1 className="text-3xl sm:text-4xl font-bold text-brand-text tracking-tight">
-          Analytics Dashboard
-        </h1>
-        <p className="text-lg text-brand-text-muted mt-1">
-          An overview of your fitness journey and progress.
-        </p>
+      <motion.div variants={itemVariant} className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
+        <div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-brand-text tracking-tight">
+              Analytics
+            </h1>
+            <p className="text-lg text-brand-text-muted mt-1">
+              An overview of your fitness journey and progress.
+            </p>
+        </div>
+        <DateRangeSelector selectedRange={dateRange} onSelectRange={setDateRange} />
       </motion.div>
 
       {workouts.length === 0 ? (
@@ -350,99 +438,65 @@ const AnalyticsPage: React.FC = () => {
           </p>
         </motion.div>
       ) : (
-        <>
-          <motion.section variants={itemVariant}>
-            <ConsistencyCalendar workoutData={workoutDataForCalendar} />
-          </motion.section>
-
-          <motion.section variants={itemVariant}>
-            <VolumeChart series={volumeSeries} />
-          </motion.section>
-
-          {exerciseOptions.length > 0 && (
-            <motion.section variants={itemVariant}>
-              <ExerciseProgressChart
-                series={exerciseProgressData.series}
-                categories={exerciseProgressData.categories}
-                title="Exercise Progression"
-                onExerciseChange={setSelectedExercise}
-                exerciseOptions={exerciseOptions}
-                selectedExercise={selectedExercise}
-              />
-            </motion.section>
-          )}
-
-          <motion.section variants={itemVariant}>
-            <h2 className="text-2xl font-semibold text-brand-text mb-4 tracking-tight">
-              Statistics
-            </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column for Stats */}
-              <div className="lg:col-span-2 space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium text-brand-text-muted mb-3">
-                    Activity (Last 30 Days)
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <StatsCard
-                      title="Workouts"
-                      value={analytics.monthlyWorkouts}
-                      icon={<BoltIcon className="w-6 h-6" />}
-                      comparisonValue={analytics.workoutsChange}
-                    />
-                    <StatsCard
-                      title="Volume"
-                      value={`${(analytics.monthlyVolume / 1000).toFixed(1)}`}
-                      unit="k kg"
-                      icon={<ScaleIcon className="w-6 h-6" />}
-                      comparisonValue={analytics.volumeChange}
-                    />
-                    <StatsCard
-                      title="New PRs"
-                      value={analytics.monthlyPrs}
-                      icon={<TrophyIcon className="w-6 h-6" />}
-                      comparisonValue={analytics.prsChange}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-medium text-brand-text-muted mb-3">
-                    All-Time Progress
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <StatsCard
-                      title="Total Volume"
-                      value={`${(analytics.allTimeVolume / 1000).toFixed(1)}`}
-                      unit="k kg"
-                      icon={<ScaleIcon className="w-6 h-6" />}
-                    />
-                    <StatsCard
-                      title="Total PRs"
-                      value={analytics.allTimePrs}
-                      icon={<TrophyIcon className="w-6 h-6" />}
-                    />
-                    <StatsCard
-                      title="Top Set (e1RM)"
-                      value={`${analytics.topSet.estimated1RM.value.toFixed(
-                        1
-                      )}kg`}
-                      icon={<StarIcon className="w-6 h-6" />}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column for Muscle Distribution */}
-              <div className="lg:col-span-1">
-                <MuscleGroupDistributionChart
-                  series={muscleGroupData.series}
-                  labels={muscleGroupData.labels}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 auto-rows-max">
+          <div className="xl:col-span-12 space-y-8">
+            <motion.div variants={itemVariant} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatsCard 
+                    title="Workouts"
+                    value={analytics.periodWorkouts}
+                    sparklineData={analytics.workoutSparkline}
+                    comparisonValue={analytics.workoutChange}
                 />
-              </div>
-            </div>
-          </motion.section>
-        </>
+                <StatsCard 
+                    title="Volume"
+                    value={Number((analytics.periodVolume / 1000).toFixed(1))}
+                    unit="k kg"
+                    sparklineData={analytics.volumeSparkline}
+                    comparisonValue={analytics.volumeChange}
+                />
+                <StatsCard 
+                    title="New PRs"
+                    value={analytics.periodPrs}
+                    sparklineData={analytics.prSparkline}
+                    comparisonValue={analytics.prsChange}
+                />
+            </motion.div>
+          </div>
+
+          <div className="xl:col-span-8 space-y-8">
+            <GlassCard title="Total Volume">
+                <React.Suspense fallback={<Skeleton className="h-[350px] w-full" />}>
+                    <VolumeChart
+                      data={volumeSeries[0]?.data || []}
+                      dateRange={dateRange}
+                      key={`volume-chart-${volumeSeries[0]?.data.length || 0}`}
+                    />
+                </React.Suspense>
+            </GlassCard>
+            
+            {exerciseOptions.length > 0 && (
+              <React.Suspense fallback={<Skeleton className="h-[440px] w-full rounded-2xl" />}>
+                <ExerciseProgressChart
+                    series={exerciseProgressData.series}
+                    exercise={selectedExercise}
+                    onExerciseChange={setSelectedExercise}
+                    exerciseOptions={exerciseOptions}
+                    key={selectedExercise}
+                />
+              </React.Suspense>
+            )}
+          </div>
+          <div className="xl:col-span-4 space-y-8">
+            <GlassCard title="Muscle Group Distribution" fullHeight>
+                <React.Suspense fallback={<Skeleton className="h-full w-full" />}>
+                    <MuscleGroupDistributionChart
+                        data={muscleGroupData}
+                        key={`muscle-chart-${muscleGroupData.length}`}
+                    />
+                </React.Suspense>
+            </GlassCard>
+          </div>
+        </div>
       )}
     </motion.div>
   );

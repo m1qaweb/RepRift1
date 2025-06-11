@@ -182,12 +182,6 @@ const WorkoutLogForm: React.FC = () => {
     update(exerciseIndex, { ...exercise, sets: updatedSets });
   };
 
-  const removeSet = (exerciseIndex: number, setIndex: number) => {
-    const exercise = watch(`exercises.${exerciseIndex}`);
-    const updatedSets = exercise.sets.filter((_, i) => i !== setIndex);
-    update(exerciseIndex, { ...exercise, sets: updatedSets });
-  };
-
   if (isProgramLoading) {
     return (
       <div className="flex justify-center items-center h-64">

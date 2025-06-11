@@ -68,6 +68,7 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
   isSaving,
 }) => {
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const {
     register,
@@ -111,6 +112,11 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
   }, [program, reset]);
 
   const onSubmitHandler: SubmitHandler<ProgramFormInputs> = (data) => {
+    if (data.exercises.length === 0) {
+      setFormError("Please add at least one exercise to the program.");
+      return;
+    }
+
     const exercisesToSave: ProgramExerciseData[] = data.exercises.map((ex) => ({
       id: ex.masterExerciseId,
       name: ex.name,
@@ -125,6 +131,8 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
       description: data.description,
       exercises: exercisesToSave,
     });
+
+    setFormError(null);
   };
 
   const handleExercisesSelectedFromModal = (
@@ -139,6 +147,7 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
       localId: Math.random().toString(36).substr(2, 9),
     }));
     append(newExercisesToAdd);
+    setFormError(null);
     setIsExerciseModalOpen(false);
   };
 
@@ -282,7 +291,12 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
                 type="submit"
                 variant="primary"
                 isLoading={isSaving}
-                disabled={isSaving || !isValid || !isDirty}
+                disabled={
+                  isSaving ||
+                  !isValid ||
+                  !isDirty ||
+                  fields.length === 0
+                }
                 className="min-w-[120px]"
               >
                 {isSaving ? "Saving..." : "Save Program"}
@@ -291,6 +305,17 @@ const ProgramEditorForm: React.FC<ProgramEditorFormProps> = ({
           </div>
         </div>
       </motion.form>
+
+      {formError && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-3 bg-error/10 border border-error/30 text-error text-sm rounded-md"
+          role="alert"
+        >
+          {formError}
+        </motion.div>
+      )}
 
       {isExerciseModalOpen && (
         <ExerciseSelectionModal

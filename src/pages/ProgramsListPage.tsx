@@ -1,6 +1,6 @@
 // /src/pages/ProgramsListPage.tsx (UPGRADED FOR REACT QUERY)
 
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Program } from "../types/data";
@@ -9,16 +9,25 @@ import {
   deleteProgram,
   saveProgram,
 } from "../services/programService";
-import ProgramCard from "../components/Programs/ProgramCard";
 import Button from "../components/UI/Button";
-import ProgramEditorForm from "../components/Programs/ProgramEditorForm";
 import Modal from "../components/UI/Modal";
 import {
   PlusCircleIcon,
   ExclamationTriangleIcon,
   RectangleStackIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import Spinner from "../components/UI/Spinner";
+import { useAuth } from "../contexts/AuthContext";
+import { useRealtimePrograms } from "../hooks/useRealtimePrograms";
+
+const ProgramCard = lazy(() => import("../components/Programs/ProgramCard"));
+const ProgramEditorForm = lazy(
+  () => import("../components/Programs/ProgramEditorForm")
+);
+const ProgramTemplatesModal = lazy(
+  () => import("../components/Programs/ProgramTemplatesModal")
+);
 
 const ProgramsListPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -31,6 +40,11 @@ const ProgramsListPage: React.FC = () => {
     id: string;
     title: string;
   } | null>(null);
+
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+
+  const { user } = useAuth();
+  useRealtimePrograms(user?.id);
 
   const {
     data: programs = [],
@@ -99,6 +113,14 @@ const ProgramsListPage: React.FC = () => {
     deleteProgramMutation.mutate(programToDelete.id);
   };
 
+  const handleOpenTemplatesModal = () => {
+    setIsTemplatesModalOpen(true);
+  };
+
+  const handleCloseTemplatesModal = () => {
+    setIsTemplatesModalOpen(false);
+  };
+
   const programsGridVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -152,7 +174,7 @@ const ProgramsListPage: React.FC = () => {
         </p>
       </header>
 
-      <div className="mb-8 flex justify-center sm:justify-end">
+      <div className="mb-8 flex flex-col sm:flex-row gap-3 justify-center sm:justify-end">
         <Button
           variant="primary"
           onClick={handleOpenModalForNew}
@@ -161,6 +183,16 @@ const ProgramsListPage: React.FC = () => {
           className="shadow-lg shadow-brand-primary/20 hover:shadow-xl hover:shadow-brand-primary/30 transform hover:-translate-y-0.5 transition-all duration-300"
         >
           Create New Program
+        </Button>
+
+        <Button
+          variant="secondary"
+          onClick={handleOpenTemplatesModal}
+          leftIcon={<Squares2X2Icon className="h-5 w-5" />}
+          size="md"
+          className="shadow-lg shadow-brand-border/10 hover:shadow-brand-border/20 transform hover:-translate-y-0.5 transition-all duration-300"
+        >
+          Browse Templates
         </Button>
       </div>
 
@@ -175,12 +207,13 @@ const ProgramsListPage: React.FC = () => {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6"
           >
             {programs.map((program) => (
-              <ProgramCard
-                key={program.id}
-                program={program}
-                onEditClick={handleOpenModalForEdit}
-                onDeleteClick={handleOpenDeleteModal}
-              />
+              <Suspense key={program.id} fallback={<Spinner size="lg" />}>
+                <ProgramCard
+                  program={program}
+                  onEditClick={handleOpenModalForEdit}
+                  onDeleteClick={handleOpenDeleteModal}
+                />
+              </Suspense>
             ))}
           </motion.div>
         ) : (
@@ -215,12 +248,14 @@ const ProgramsListPage: React.FC = () => {
           panelClassName="dark:bg-brand-card/80 bg-brand-card-light/95 backdrop-blur-xl"
           preventCloseOnBackdropClick={true}
         >
-          <ProgramEditorForm
-            program={editingProgram}
-            onSave={handleSaveProgram}
-            onCancel={handleCloseEditorModal}
-            isSaving={saveProgramMutation.isPending}
-          />
+          <Suspense fallback={<Spinner size="lg" />}>
+            <ProgramEditorForm
+              program={editingProgram}
+              onSave={handleSaveProgram}
+              onCancel={handleCloseEditorModal}
+              isSaving={saveProgramMutation.isPending}
+            />
+          </Suspense>
         </Modal>
       )}
 
@@ -269,6 +304,14 @@ const ProgramsListPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Templates Modal */}
+      <Suspense fallback={null}>
+        <ProgramTemplatesModal
+          isOpen={isTemplatesModalOpen}
+          onClose={handleCloseTemplatesModal}
+        />
+      </Suspense>
     </motion.div>
   );
 };

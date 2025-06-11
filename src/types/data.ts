@@ -58,6 +58,14 @@ export interface Program {
   createdBy: string;
 }
 
+// A read-only template that users can import. It mirrors `Program` but omits `createdBy`.
+export interface ProgramTemplate {
+  id: string;
+  title: string;
+  description: string;
+  exercises: Exercise[];
+}
+
 export interface CompletedSet {
   reps: number | null;
   weight: number | null;

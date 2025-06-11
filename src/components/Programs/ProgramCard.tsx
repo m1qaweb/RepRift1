@@ -1,5 +1,5 @@
 // /src/components/Programs/ProgramCard.tsx
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { motion } from "framer-motion";
 import { Program } from "../../types/data";
 import {
@@ -104,4 +104,4 @@ const ProgramCard: React.FC<ProgramCardProps> = ({
     </motion.div>
   );
 };
-export default ProgramCard;
+export default React.memo(ProgramCard);

@@ -9,15 +9,10 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import Card from "../UI/Card";
+import GlassCard from "../UI/GlassCard";
 import { useWorkout } from "../../contexts/WorkoutContext";
 import { format, subDays, parseISO, isThisWeek } from "date-fns";
 import { motion } from "framer-motion";
-
-interface WeeklySummaryData {
-  name: string;
-  volume: number;
-}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -89,68 +84,71 @@ const WeeklySummaryWidget: React.FC = () => {
     }, [workouts]);
 
   return (
-    <Card>
-      <div className="p-4 sm:p-5">
-        <h3 className="text-base sm:text-lg font-semibold text-brand-text mb-4">
-          Weekly Summary
-        </h3>
-        <div className="grid grid-cols-3 gap-4 text-center mb-4">
-          <StatDisplay
-            label="Total Volume"
-            value={`${(totalWeeklyVolume / 1000).toFixed(1)}k kg`}
-          />
-          <StatDisplay label="Workouts" value={weeklyWorkoutCount} />
-          <StatDisplay label="Avg. Duration" value={`${avgDuration} min`} />
+    <GlassCard title="Weekly Summary" fullHeight>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-3 gap-4 text-center mb-4">
+            <StatDisplay
+              label="Total Volume"
+              value={`${(totalWeeklyVolume / 1000).toFixed(1)}k kg`}
+            />
+            <StatDisplay label="Workouts" value={weeklyWorkoutCount} />
+            <StatDisplay label="Avg. Duration" value={`${avgDuration} min`} />
+          </div>
         </div>
-      </div>
 
-      <div className="px-2">
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart
-            data={chartData}
-            margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
-            barCategoryGap="30%"
-            onMouseLeave={() => setActiveBarIndex(null)}
-          >
-            <XAxis
-              dataKey="name"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-              stroke="var(--color-text-muted)"
-            />
-            <YAxis
-              fontSize={10}
-              tickLine={false}
-              axisLine={false}
-              stroke="var(--color-text-muted)"
-              tickFormatter={(value) => `${Math.round(value / 1000)}k`}
-            />
-            <Tooltip
-              content={<CustomTooltip />}
-              cursor={{ fill: "rgb(var(--color-primary-rgb) / 0.1)" }}
-            />
-            <Bar
-              dataKey="volume"
-              onMouseEnter={(_, index) => setActiveBarIndex(index)}
-              radius={[4, 4, 0, 0]}
+        <div className="px-2">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart
+              data={chartData}
+              margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
+              barCategoryGap="30%"
+              onMouseLeave={() => setActiveBarIndex(null)}
             >
-              {chartData.map((_entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={
-                    activeBarIndex === index
-                      ? "var(--color-accent)"
-                      : "var(--color-primary)"
-                  }
-                  className="transition-fill duration-150"
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </Card>
+              <XAxis
+                dataKey="name"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                stroke="var(--color-text-muted)"
+              />
+              <YAxis
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                stroke="var(--color-text-muted)"
+                tickFormatter={(value) => `${Math.round(value / 1000)}k`}
+              />
+              <Tooltip
+                content={<CustomTooltip />}
+                cursor={{ fill: "rgb(var(--color-primary-rgb) / 0.1)" }}
+              />
+              <Bar
+                dataKey="volume"
+                onMouseEnter={(_, index) => setActiveBarIndex(index)}
+                radius={[4, 4, 0, 0]}
+              >
+                {chartData.map((_entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={
+                      activeBarIndex === index
+                        ? "var(--color-accent)"
+                        : "var(--color-primary)"
+                    }
+                    className="transition-fill duration-150"
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
+    </GlassCard>
   );
 };
 

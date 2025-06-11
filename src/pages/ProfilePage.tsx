@@ -3,6 +3,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
+import { useRealtimeWorkoutLogs } from "../hooks/useRealtimeWorkoutLogs";
 import { getWorkoutLogs } from "../services/workoutLogService";
 import { MuscularSystemAnalysis, ProfileCard } from "../components/Profile";
 import Spinner from "../components/UI/Spinner";
@@ -10,6 +11,9 @@ import Card from "../components/UI/Card";
 
 const ProfilePage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
+
+  // Realtime subscription – invalidates React Query when logs change
+  useRealtimeWorkoutLogs(user?.id);
 
   const {
     data: workoutLogs,

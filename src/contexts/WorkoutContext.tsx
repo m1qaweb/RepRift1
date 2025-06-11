@@ -12,8 +12,6 @@ import {
   PersonalRecord,
   WorkoutContextType,
   WorkoutState,
-  Set as WorkoutSet,
-  Exercise,
 } from "../types"; // <-- Updated import
 
 const WORKOUT_DATA_KEY = "workoutHistory";
@@ -85,36 +83,6 @@ export const WorkoutProvider: React.FC<WorkoutProviderProps> = ({
     loading: true,
   });
 
-  // Load data from localStorage on initial render
-  useEffect(() => {
-    try {
-      const storedData = localStorage.getItem(WORKOUT_DATA_KEY);
-      if (storedData) {
-        const parsedData: WorkoutState = JSON.parse(storedData);
-        // Sanitize data on load
-        const sanitized = sanitizeWorkouts(parsedData.workouts || []);
-        const newPrs = calculateAllStats(sanitized);
-        setState({
-          workouts: sanitized,
-          personalRecords: newPrs,
-          loading: false,
-        });
-      } else {
-        setState((s) => ({ ...s, loading: false }));
-      }
-    } catch (error) {
-      console.error("Failed to load workout data from localStorage", error);
-      setState((s) => ({ ...s, loading: false }));
-    }
-  }, []);
-
-  // Persist state to localStorage whenever it changes
-  useEffect(() => {
-    if (!state.loading) {
-      localStorage.setItem(WORKOUT_DATA_KEY, JSON.stringify(state));
-    }
-  }, [state]);
-
   const calculateAllStats = useCallback(
     (workouts: Workout[]): { [key: string]: PersonalRecord } => {
       const allPrs: { [key: string]: PersonalRecord } = {};
@@ -175,6 +143,36 @@ export const WorkoutProvider: React.FC<WorkoutProviderProps> = ({
     },
     []
   );
+
+  // Load data from localStorage on initial render
+  useEffect(() => {
+    try {
+      const storedData = localStorage.getItem(WORKOUT_DATA_KEY);
+      if (storedData) {
+        const parsedData: WorkoutState = JSON.parse(storedData);
+        // Sanitize data on load
+        const sanitized = sanitizeWorkouts(parsedData.workouts || []);
+        const newPrs = calculateAllStats(sanitized);
+        setState({
+          workouts: sanitized,
+          personalRecords: newPrs,
+          loading: false,
+        });
+      } else {
+        setState((s) => ({ ...s, loading: false }));
+      }
+    } catch (error) {
+      console.error("Failed to load workout data from localStorage", error);
+      setState((s) => ({ ...s, loading: false }));
+    }
+  }, [calculateAllStats]);
+
+  // Persist state to localStorage whenever it changes
+  useEffect(() => {
+    if (!state.loading) {
+      localStorage.setItem(WORKOUT_DATA_KEY, JSON.stringify(state));
+    }
+  }, [state]);
 
   const addWorkout = useCallback(
     (newWorkout: Workout) => {

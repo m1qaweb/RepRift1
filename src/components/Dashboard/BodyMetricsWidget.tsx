@@ -288,7 +288,7 @@ const BodyMetricsWidget: React.FC = () => {
   }) => {
     if (value === undefined)
       return (
-        <span className="text-xl sm:text-2xl font-bold text-brand-text-muted/80">
+        <span className="text-lg sm:text-xl font-bold text-brand-text-muted/80">
           --
         </span>
       );
@@ -300,11 +300,11 @@ const BodyMetricsWidget: React.FC = () => {
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         className="flex items-baseline"
       >
-        <strong className="text-xl sm:text-2xl font-bold text-brand-text tabular-nums">
+        <strong className="text-lg sm:text-xl font-bold text-brand-text tabular-nums">
           {value.toFixed(1)}
         </strong>
         {unit && (
-          <span className="text-sm font-medium text-brand-text-muted/90 ml-1">
+          <span className="text-xs sm:text-sm font-medium text-brand-text-muted/90 ml-1">
             {unit}
           </span>
         )}
@@ -320,13 +320,13 @@ const BodyMetricsWidget: React.FC = () => {
     trendValue?: number;
   }> = ({ label, Icon, value, unit, trendValue }) => (
     <motion.div
-      className="flex flex-col p-3 sm:p-3.5 rounded-xl bg-brand-background/50 flex-1 min-w-[120px]"
+      className="flex flex-col p-3 rounded-xl bg-brand-background/70 border border-white/5 hover:bg-brand-background/90 transition-colors duration-200 flex-1 min-w-[120px]"
       variants={statCardAnimation}
     >
-      <div className="flex items-center text-xs text-brand-text-muted mb-1">
-        <Icon className="w-4 h-4 mr-1.5 opacity-80" /> {label}
+      <div className="flex items-center text-xs sm:text-sm text-brand-text-muted mb-2">
+        <Icon className="w-4 h-4 mr-2 text-brand-primary" /> {label}
       </div>
-      <div className="flex items-end mt-0.5">
+      <div className="flex items-end mt-auto">
         <AnimatedStat value={value} unit={unit} />
         {renderTrend(trendValue, unit)}
       </div>
@@ -334,7 +334,7 @@ const BodyMetricsWidget: React.FC = () => {
   );
 
   const cardBaseClasses =
-    "bg-brand-card/70 dark:bg-brand-card/60 backdrop-blur-xl shadow-xl rounded-xl h-full";
+    "bg-brand-card/80 dark:bg-brand-card/70 backdrop-blur-2xl shadow-2xl rounded-2xl h-full";
   const hasBmiData = chartData.some((d) => d.bmi !== undefined);
 
   if (isLoading && chartData.length === 0) {
@@ -365,10 +365,10 @@ const BodyMetricsWidget: React.FC = () => {
         initial="initial"
         animate="animate"
       >
-        <div className="p-4 sm:p-5 flex-shrink-0">
-          <div className="flex justify-between items-start mb-3 sm:mb-4">
+        <div className="p-5 sm:p-6 flex-shrink-0">
+          <div className="flex justify-between items-start mb-4 sm:mb-6">
             <div className="flex-1">
-              <h3 className="text-base sm:text-lg font-semibold text-brand-text">
+              <h3 className="text-lg sm:text-xl font-semibold text-brand-text">
                 Body Progress
               </h3>
               {latestMetrics.date && (
@@ -429,12 +429,12 @@ const BodyMetricsWidget: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex-grow w-full"
+              className="flex-grow w-full h-80"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={chartData}
-                  margin={{ top: 5, right: 20, left: -10, bottom: 0 }}
+                  margin={{ top: 10, right: 20, left: 15, bottom: 5 }}
                 >
                   <defs>
                     <linearGradient
@@ -476,7 +476,12 @@ const BodyMetricsWidget: React.FC = () => {
                   />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+                    tick={{
+                      fontSize: 10,
+                      fill: "var(--color-text-muted)",
+                      textAnchor: "middle",
+                      dy: 5,
+                    }}
                     tickLine={false}
                     axisLine={{ stroke: "rgb(var(--color-border-rgb) / 0.2)" }}
                     padding={{ left: 20, right: 20 }}
@@ -485,25 +490,33 @@ const BodyMetricsWidget: React.FC = () => {
                   <YAxis
                     yAxisId="weight"
                     orientation="left"
-                    tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+                    tick={{
+                      fontSize: 10,
+                      fill: "var(--color-text-muted)",
+                      textAnchor: "end",
+                    }}
                     tickMargin={5}
                     tickLine={false}
                     axisLine={false}
                     domain={["dataMin - 2", "dataMax + 2"]}
                     tickFormatter={(v) => `${v}kg`}
-                    width={40}
+                    width={45}
                   />
                   {hasBmiData && (
                     <YAxis
                       yAxisId="bmi"
                       orientation="right"
-                      tick={{ fontSize: 10, fill: "var(--color-text-muted)" }}
+                      tick={{
+                        fontSize: 10,
+                        fill: "var(--color-text-muted)",
+                        textAnchor: "start",
+                      }}
                       tickMargin={5}
                       tickLine={false}
                       axisLine={false}
                       domain={["dataMin - 1", "dataMax + 1"]}
                       tickFormatter={(v) => v.toFixed(1)}
-                      width={35}
+                      width={40}
                     />
                   )}
                   <Tooltip
@@ -512,12 +525,12 @@ const BodyMetricsWidget: React.FC = () => {
                   />
                   <Legend
                     verticalAlign="top"
-                    height={30}
+                    height={40}
                     iconSize={8}
                     wrapperStyle={{
-                      fontSize: "11px",
+                      fontSize: "12px",
                       paddingTop: "5px",
-                      paddingBottom: "5px",
+                      paddingBottom: "15px",
                       opacity: 0.9,
                     }}
                   />
@@ -530,7 +543,7 @@ const BodyMetricsWidget: React.FC = () => {
                       stroke="var(--color-success)"
                       strokeOpacity={0.5}
                       fill="var(--color-success)"
-                      fillOpacity={0.05}
+                      fillOpacity={0.08}
                     />
                   )}
                   {userWeightGoalKg && (
@@ -541,7 +554,7 @@ const BodyMetricsWidget: React.FC = () => {
                         value: `Goal`,
                         position: "insideTopRight",
                         fill: "var(--color-success)",
-                        fontSize: 10,
+                        fontSize: 11,
                         dy: -5,
                       }}
                       stroke="var(--color-success)"
@@ -553,10 +566,10 @@ const BodyMetricsWidget: React.FC = () => {
                     dataKey="weight"
                     name="Weight"
                     stroke="var(--color-primary)"
-                    strokeWidth={2}
-                    dot={{ r: 2, fill: "var(--color-primary)" }}
+                    strokeWidth={2.5}
+                    dot={{ r: 3, fill: "var(--color-primary)" }}
                     activeDot={{
-                      r: 5,
+                      r: 6,
                       stroke: "var(--color-card)",
                       strokeWidth: 2,
                       fill: "var(--color-primary)",
@@ -578,10 +591,10 @@ const BodyMetricsWidget: React.FC = () => {
                         dataKey="bmi"
                         name="BMI"
                         stroke="var(--color-secondary)"
-                        strokeWidth={2}
-                        dot={{ r: 2, fill: "var(--color-secondary)" }}
+                        strokeWidth={2.5}
+                        dot={{ r: 3, fill: "var(--color-secondary)" }}
                         activeDot={{
-                          r: 5,
+                          r: 6,
                           stroke: "var(--color-card)",
                           strokeWidth: 2,
                           fill: "var(--color-secondary)",
@@ -610,11 +623,11 @@ const BodyMetricsWidget: React.FC = () => {
               className="flex-grow flex items-center justify-center"
             >
               <div className="text-center py-8 px-4">
-                <ScaleIcon className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-brand-primary/20 mb-3 sm:mb-4" />
-                <h3 className="text-base sm:text-lg font-semibold text-brand-text mb-2">
+                <ScaleIcon className="h-16 w-16 sm:h-20 sm:w-20 mx-auto text-brand-primary/15 mb-4" />
+                <h3 className="text-lg sm:text-xl font-semibold text-brand-text mb-3">
                   Track Your Progress
                 </h3>
-                <p className="text-sm text-brand-text-muted max-w-xs mx-auto mb-5">
+                <p className="text-sm text-brand-text-muted max-w-xs mx-auto mb-6">
                   Log your weight and other metrics to see your progress over
                   time.
                 </p>
@@ -697,7 +710,7 @@ const CustomCursor: React.FC<any> = ({ points, height }) => {
       x2={x}
       y2={height}
       stroke="rgb(var(--color-primary-rgb) / 0.5)"
-      strokeWidth={1}
+      strokeWidth={1.5}
       strokeDasharray="3 3"
     />
   );
@@ -726,7 +739,7 @@ const CustomTooltip: React.FC<TooltipProps<ValueType, NameType>> = ({
     };
 
     return (
-      <div className="p-2 sm:p-2.5 bg-brand-card/80 dark:bg-brand-card/90 backdrop-blur-md shadow-xl rounded-lg border border-brand-border/30 text-xs min-w-[140px]">
+      <div className="p-3 bg-brand-card/90 dark:bg-black/70 backdrop-blur-md shadow-xl rounded-lg border border-brand-border/40 text-sm min-w-[160px]">
         <p className="label font-bold text-brand-text mb-2 text-sm">
           {formatDate(data.fullDate, "MMMM d, yyyy")}
         </p>
@@ -734,11 +747,11 @@ const CustomTooltip: React.FC<TooltipProps<ValueType, NameType>> = ({
           <div
             key={`item-${entry.name}`}
             style={{ color: entry.color }}
-            className="font-semibold flex justify-between items-center my-1.5"
+            className="font-medium flex justify-between items-center my-2"
           >
             <span>{entry.name}:</span>
             <div className="flex items-baseline">
-              <span className="ml-2 tabular-nums text-sm sm:text-base">
+              <span className="ml-2 tabular-nums text-base">
                 {`${(entry.value as number).toFixed(1)}${
                   entry.name === "Weight" ? "kg" : ""
                 }`}

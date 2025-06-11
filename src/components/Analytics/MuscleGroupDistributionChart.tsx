@@ -2,97 +2,90 @@ import React from "react";
 import ReactApexChart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import { useTheme } from "../../contexts/ThemeContext";
-import {
-  getBaseChartOptions,
-  getChartColors,
-  chartColorPalettes,
-} from "../../config/chartThemes";
+import { getChartColors } from "../../config/chartThemes";
+import { useChartReady } from "../../hooks/useChartReady";
 
 interface MuscleGroupDistributionChartProps {
-  series: number[];
-  labels: string[];
+  data: { label: string; value: number }[];
 }
 
-const MuscleGroupDistributionChart: React.FC<
-  MuscleGroupDistributionChartProps
-> = ({ series, labels }) => {
+const MuscleGroupDistributionChart: React.FC<MuscleGroupDistributionChartProps> = ({ data }) => {
+  const [containerRef, isReady] = useChartReady<HTMLDivElement>();
   const { theme } = useTheme();
-  const currentTheme = theme || "dark";
-  const baseOptions = getBaseChartOptions(currentTheme);
-  const chartColors = getChartColors(currentTheme);
+  const chartColors = getChartColors(theme || 'dark');
 
-  const totalVolume = series.reduce((a, b) => a + b, 0);
+  const series = data.map(d => d.value);
+  const labels = data.map(d => d.label);
 
   const options: ApexOptions = {
-    ...baseOptions,
     chart: {
-      ...baseOptions.chart,
-      type: "donut",
+      type: 'donut',
+      height: 250,
+      background: 'transparent',
+      dropShadow: {
+        enabled: true,
+        top: 2,
+        left: 0,
+        blur: 3,
+        color: chartColors[2],
+        opacity: 0.2,
+      },
     },
-    colors: chartColors,
-    labels: labels,
     plotOptions: {
       pie: {
         donut: {
+          size: '70%',
           labels: {
             show: true,
             total: {
               show: true,
-              label: "Total Volume",
-              color: chartColorPalettes[currentTheme].textMuted,
-              formatter: () => {
-                if (totalVolume >= 1000)
-                  return `${(totalVolume / 1000).toFixed(1)}k kg`;
-                return `${totalVolume.toLocaleString()} kg`;
+              label: 'Total Sets',
+              formatter: (w) => {
+                const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
+                return total.toString();
               },
-            },
-            value: {
-              color: chartColorPalettes[currentTheme].text,
+              color: chartColors[6],
             },
           },
         },
       },
     },
-    responsive: [
-      {
-        breakpoint: 480,
-        options: {
-          chart: {
-            width: 200,
-          },
-          legend: {
-            position: "bottom",
-          },
-        },
-      },
-    ],
+    labels: labels,
+    colors: [chartColors[2], chartColors[0], chartColors[1], chartColors[3], chartColors[4], chartColors[5]],
+    dataLabels: {
+      enabled: true,
+      formatter: (val: number) => `${val.toFixed(1)}%`,
+    },
+    legend: {
+      position: 'bottom',
+      fontFamily: 'inherit',
+      labels: { colors: chartColors[6] },
+    },
     tooltip: {
-      ...baseOptions.tooltip,
-      y: {
-        formatter: (val, { seriesIndex }) => {
-          const percentage =
-            totalVolume > 0 ? (series[seriesIndex] / totalVolume) * 100 : 0;
-          return `${percentage.toFixed(1)}% (${val.toLocaleString()} kg)`;
-        },
-      },
+      theme: theme,
+      y: { formatter: (val) => `${val} sets` },
     },
+    stroke: { width: 0 },
   };
 
+  const hasData = data.length > 0 && data.some(d => d.value > 0);
+
   return (
-    <div className="rounded-2xl bg-brand-card/30 p-4 border border-brand-border/10 backdrop-blur-sm h-full flex flex-col">
-      <h3 className="text-xl font-semibold text-brand-text mb-2">
-        Volume by Muscle Group
-      </h3>
-      <div className="flex-grow flex items-center justify-center">
+    <div ref={containerRef} className="w-full h-full">
+      {isReady && hasData ? (
         <ReactApexChart
           options={options}
           series={series}
           type="donut"
-          width="100%"
+          height={250}
         />
-      </div>
+      ) : (
+        <div className="flex items-center justify-center h-full text-brand-text-muted">
+          {hasData ? "Loading chart..." : "No workout data for this period."}
+        </div>
+      )}
     </div>
   );
 };
 
-export default MuscleGroupDistributionChart;
+export default React.memo(MuscleGroupDistributionChart);
