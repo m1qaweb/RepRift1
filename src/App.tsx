@@ -44,10 +44,11 @@ const AppContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const location = useLocation();
 
+  if (authLoading) {
+    return <PageLoader />;
+  }
+
   const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-    if (authLoading) {
-      return <PageLoader />;
-    }
     if (!user) {
       return <Navigate to="/login" state={{ from: location }} replace />;
     }

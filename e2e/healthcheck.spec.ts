@@ -25,7 +25,7 @@ test.describe("Basic Health Checks", () => {
     // Check for common UI elements
     await expect(
       page
-        .getByRole("link", { name: /sign in/i })
+        .getByRole("link", { name: /login/i })
         .or(page.getByRole("link", { name: /dashboard/i }))
     ).toBeVisible();
   });

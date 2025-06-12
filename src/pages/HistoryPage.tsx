@@ -2,10 +2,8 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
-
+import { useWorkoutLogs } from "../hooks/useWorkoutLogs";
 import { WorkoutLog } from "../types/data";
-import { getWorkoutLogs } from "../services/workoutLogService";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 import Calendar, { CalendarDay } from "../components/History/Calendar";
@@ -36,14 +34,11 @@ const HistoryPage: React.FC = () => {
   const [monthChangeDirection, setMonthChangeDirection] = useState(1);
 
   const {
-    data: allWorkoutLogs = [],
+    workoutLogs: allWorkoutLogs = [],
     isLoading,
     isError,
     error,
-  } = useQuery<WorkoutLog[], Error>({
-    queryKey: ["workoutLogs"],
-    queryFn: getWorkoutLogs,
-  });
+  } = useWorkoutLogs();
 
   const handleDayClick = (day: CalendarDay) => {
     if (day.hasWorkout && day.workoutLog) {
@@ -67,7 +62,7 @@ const HistoryPage: React.FC = () => {
     setSelectedLog(null);
   };
 
-  if (isError) {
+  if (isError && error) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] text-center">
         <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mb-4" />

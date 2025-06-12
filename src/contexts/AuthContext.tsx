@@ -51,22 +51,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // This single useEffect hook is the heart of the entire auth system.
   // It runs once on app load and sets up a listener that handles all authentication events.
   useEffect(() => {
-    setLoading(true);
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // This function handles the initial session check and sets up the listener.
+    const initializeSession = async () => {
+      // 1. Get the current session from Supabase
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      // 2. Process the session to set the user state
       await processUserSession(session);
-      setLoading(false); // We are finished loading only after the session has been fully processed.
-    });
 
-    // This is the cleanup function that runs when the AuthProvider unmounts,
-    // preventing memory leaks by removing the listener.
-    return () => {
-      subscription.unsubscribe();
+      // 3. We are now finished with the initial loading
+      setLoading(false);
+
+      // 4. Set up a listener for any future changes in auth state
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        processUserSession(session);
+      });
+
+      // 5. Return the subscription so we can unsubscribe on cleanup
+      return subscription;
     };
-  }, []); // The empty array [] ensures this effect runs only once.
 
-  // A helper function to fetch a user's profile and create the AppUser object.
+    const subscriptionPromise = initializeSession();
+
+    // The cleanup function for the useEffect hook
+    return () => {
+      subscriptionPromise.then((subscription) => subscription?.unsubscribe());
+    };
+  }, []);
+
   const processUserSession = async (session: Session | null) => {
     if (session?.user) {
       // A user is logged in. Fetch their data from our public `profiles` table.

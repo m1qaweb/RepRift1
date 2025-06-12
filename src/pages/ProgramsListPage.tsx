@@ -2,13 +2,9 @@
 
 import React, { useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Program } from "../types/data";
-import {
-  getPrograms,
-  deleteProgram,
-  saveProgram,
-} from "../services/programService";
+import { deleteProgram, saveProgram } from "../services/programService";
 import Button from "../components/UI/Button";
 import Modal from "../components/UI/Modal";
 import {
@@ -18,8 +14,7 @@ import {
   Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import Spinner from "../components/UI/Spinner";
-import { useAuth } from "../contexts/AuthContext";
-import { useRealtimePrograms } from "../hooks/useRealtimePrograms";
+import { usePrograms } from "../hooks/usePrograms";
 
 const ProgramCard = lazy(() => import("../components/Programs/ProgramCard"));
 const ProgramEditorForm = lazy(
@@ -43,18 +38,7 @@ const ProgramsListPage: React.FC = () => {
 
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
 
-  const { user } = useAuth();
-  useRealtimePrograms(user?.id);
-
-  const {
-    data: programs = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery<Program[], Error>({
-    queryKey: ["programs"],
-    queryFn: getPrograms,
-  });
+  const { programs = [], isLoading, isError, error } = usePrograms();
 
   const deleteProgramMutation = useMutation({
     mutationFn: deleteProgram,
@@ -146,7 +130,7 @@ const ProgramsListPage: React.FC = () => {
     );
   }
 
-  if (isError) {
+  if (isError && error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] py-10 text-brand-text">
         <ExclamationTriangleIcon className="h-16 w-16 text-red-400 mb-4" />

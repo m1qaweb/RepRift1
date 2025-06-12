@@ -8,3 +8,4 @@ supabase/.temp/
 supabase/internal
 supabase/supabase/
 supabase/config.toml
+project_analysis.md

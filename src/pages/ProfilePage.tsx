@@ -1,29 +1,19 @@
 // src/pages/ProfilePage.tsx
 import React from "react";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
-import { useRealtimeWorkoutLogs } from "../hooks/useRealtimeWorkoutLogs";
-import { getWorkoutLogs } from "../services/workoutLogService";
+import { useWorkoutLogs } from "../hooks/useWorkoutLogs";
 import { MuscularSystemAnalysis, ProfileCard } from "../components/Profile";
 import Spinner from "../components/UI/Spinner";
 import Card from "../components/UI/Card";
 
 const ProfilePage: React.FC = () => {
-  const { user, loading: authLoading } = useAuth();
-
-  // Realtime subscription – invalidates React Query when logs change
-  useRealtimeWorkoutLogs(user?.id);
-
+  const { loading: authLoading } = useAuth();
   const {
-    data: workoutLogs,
+    workoutLogs,
     isLoading: isLoadingLogs,
     error: logsError,
-  } = useQuery({
-    queryKey: ["workoutLogs", user?.id],
-    queryFn: () => (user ? getWorkoutLogs() : Promise.resolve([])),
-    enabled: !!user,
-  });
+  } = useWorkoutLogs();
 
   const isLoading = authLoading || isLoadingLogs;
   const error = logsError;
