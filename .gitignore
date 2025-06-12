@@ -1,3 +1,6 @@
 node_modules
 %APPDATA%
 build
+.env
+.env.*
+playwright-report
