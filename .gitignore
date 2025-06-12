@@ -5,4 +5,6 @@ build
 .env.*
 playwright-report
 supabase/.temp/
+supabase/internal
 supabase/supabase/
+supabase/config.toml
